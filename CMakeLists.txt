@@ -210,6 +210,44 @@ if(NOT PX4_CONFIG_FILE)
 	message(FATAL_ERROR "PX4 config file not set, try one of ${PX4_CONFIGS}")
 endif()
 
+message(STATUS "SJTU-USATL")
+message(STATUS
+		"
+//                            _ooOoo_
+//                           o8888888o
+//                           88''.''88
+//                           (| -_- |)
+//                            O\ = /O
+//                        ____/`---'\____
+//                      .   ' \\| |// `.
+//                       / \\||| : |||// \
+
+//                     / _||||| -:- |||||- \
+
+//                       | | \\\ - /// | |
+//                     | \_| ''\---/'' | |
+//                      \ .-\__ `-` ___/-. /
+//                   ___`. .' /--.--\ `. . __
+//                .   '< `.___\_<|>_/___.' >'  .
+//               | | : `- \`.;`\ _ /`;.`/ - ` : | |
+//                 \ \ `-. \_ __\ /__ _/ .-` / /
+//         ======`-.____`-.___\_____/___.-`____.-'======
+//                            `=---='
+//
+//         .............................................
+//         佛祖保佑 刚哥保佑 马昭保佑 龚畅阳保佑 永无BUG
+//
+//
+//          佛曰:
+//                  写字楼里写字间，写字间里程序员；
+//                  程序人员写程序，又拿程序换酒钱。
+//                  酒醒只在网上坐，酒醉还来网下眠；
+//                  酒醉酒醒日复日，网上网下年复年。
+//                  但愿老死电脑间，不愿鞠躬老板前；
+//                  奔驰宝马贵者趣，公交自行程序员。
+//                  别人笑我忒疯癫，我笑自己命太贱；
+//                  不见满街漂亮妹，哪个归得程序员？
+")
 message(STATUS "PX4 config file: ${PX4_CONFIG_FILE}")
 include(px4_add_board)
 include(${PX4_CONFIG_FILE})
@@ -453,6 +491,7 @@ add_subdirectory(src/lib EXCLUDE_FROM_ALL)
 
 add_subdirectory(src/platforms EXCLUDE_FROM_ALL)
 add_subdirectory(src/modules/uORB EXCLUDE_FROM_ALL) # TODO: platform layer
+add_subdirectory(src/modules/usatl_modules EXCLUDE_FROM_ALL) # TODO: platform layer
 add_subdirectory(src/drivers/boards EXCLUDE_FROM_ALL)
 
 if(EXISTS "${PX4_BOARD_DIR}/CMakeLists.txt")

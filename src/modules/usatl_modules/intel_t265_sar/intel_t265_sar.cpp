@@ -1,31 +1,23 @@
-#include <stdio.h>
+#include <cstdio>
 #include <termios.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <math.h>
+#include <cstdlib>
+#include <cstring>
+#include <cerrno>
+#include <cmath>
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
 #include <fcntl.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/distance_sensor.h>
-#include <uORB/topics/sensor_accel.h>
 #include <px4_defines.h>
 #include <px4_config.h>
-#include <px4_posix.h>
-#include <poll.h>
-#include <px4_shutdown.h>
 #include <px4_tasks.h>
 #include <px4_time.h>
-
-#include "float.h"
-#include <math.h>
-#include <mathlib/mathlib.h>
 #include <matrix/math.hpp>
 
 
@@ -35,10 +27,10 @@
  * v1.0 2019.7.9
  *
  * 通过串口接受来自upcore board的T265位置
- * 发布ORB_ID(vehicle_vision_position)
+ * 发布ORB_ID(vehicle_visual_odometry)
  *    ORB_ID(vehicle_vision_attitude)
  *
- * This driver parse t265 data,publish ORB_ID(vehicle_vision_position)
+ * This driver parse t265 data,publish ORB_ID(vehicle_visual_odometry)
  * and ORB_ID(vehicle_vision_attitude).
  *
  * 设置内容
@@ -207,7 +199,7 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
     thread_running = true;
 
     // 定义话题结构
-    struct vehicle_local_position_s vision_position;
+    struct vehicle_odometry_s vision_position;
     struct vehicle_attitude_s vision_attitude;
     // 初始化数据
     memset(&vision_position, 0 , sizeof(vision_position));
@@ -215,9 +207,8 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
     u_char data_buffer[29];
     u_char send_data_buffer[23];
     // 输出开关
-    bool t265_debug_enable = 0;
-    bool print_received_data = 0;
-    bool publish_vision_data = 1;
+    bool t265_debug_enable = false;
+    bool print_received_data = false;
     // 程序出现未知问题，关闭位置修正，加入yaw角度修正
     bool _correct_pos = 0;
     int pos[3];//pos[0] = x;pos[1] = y;pos[2] = z;
@@ -227,7 +218,6 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
     int _send_sum;
     bool _is_t265_data_check_true;
     float float_angle[3];
-    int t265_uart_error_num = 0;
     float t265_R[3][3];
     float t265_position[3] = {T265_POS_X,T265_POS_Y,T265_POS_Z};
     float trans_pos_t265[3] = {0.0f,0.0f,0.0f};
@@ -235,7 +225,6 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
     int _int_accel[3];
 
     orb_advert_t _vision_position_pub = nullptr;
-    orb_advert_t _vision_attitude_pub = nullptr;
     int distance_sub_fd = orb_subscribe(ORB_ID(distance_sensor));
     orb_set_interval(distance_sub_fd, 10);
     struct distance_sensor_s current_distance;
@@ -346,12 +335,12 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
                     vision_position.y = ((float)pos[1]/SCALE);
                     vision_position.z = ((float)pos[2]/SCALE);
 
-                    vision_position.xy_valid = true;
-                    vision_position.z_valid = true;
-                    vision_position.v_xy_valid = true;
-                    vision_position.v_z_valid = true;
+                    // vision_position.xy_valid = true;
+                    // vision_position.z_valid = true;
+                    // vision_position.v_xy_valid = true;
+                    // vision_position.v_z_valid = true;
 
-                    vision_attitude.timestamp = hrt_absolute_time();
+                    // vision_attitude.timestamp = hrt_absolute_time();
 
                     float_angle[0] = (float)angle[0]/SCALE;
                     // 需要验证是不是这样，同时此处取飞机数据更好，后续优化
@@ -398,7 +387,7 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
 
                     // vision_attitude.q[2] = -vision_attitude.q[2];
                     // vision_attitude.q[3] = -vision_attitude.q[3];
-                    q.copyTo(vision_attitude.q);
+                    q.copyTo(vision_position.q);
                     if(print_received_data){
                         PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_t265_data_check_true:%1d,flag %1d",
                                  (double)vision_position.x,(double)vision_position.y,(double)vision_position.z,
@@ -407,11 +396,12 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
                                  (int)_is_t265_data_check_true,(int)data_buffer[28]
                         );
                     }
-                    int inst = 0;
+                    int inst_pos = 0;
+                    // int inst_att = 0;
                     if(_is_t265_data_check_true){
                         // PX4_WARN("published");
-                        orb_publish_auto(ORB_ID(vehicle_vision_position), &_vision_position_pub, &vision_position, &inst, ORB_PRIO_DEFAULT);
-                        orb_publish_auto(ORB_ID(vehicle_vision_attitude), &_vision_attitude_pub, &vision_attitude, &inst, ORB_PRIO_DEFAULT);
+                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst_pos, ORB_PRIO_DEFAULT);
+                        // orb_publish_auto(ORB_ID(vehicle_vision_attitude), &_vision_attitude_pub, &vision_attitude, &inst_att, ORB_PRIO_DEFAULT);
                     } else{
                         // PX4_WARN("NOT published");
                     }

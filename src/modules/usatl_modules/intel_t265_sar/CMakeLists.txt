@@ -42,5 +42,4 @@ px4_add_module(
         intel_t265_sar.cpp
 
         DEPENDS
-        platforms__common
 )

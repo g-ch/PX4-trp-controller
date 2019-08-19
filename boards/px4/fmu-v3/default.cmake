@@ -88,7 +88,10 @@ px4_add_board(
 		vmount
 		vtol_att_control
 		wind_estimator
-
+		######################
+		#######ADD BY SDX#####
+		# usatl_modules
+		######################
 	SYSTEMCMDS
 		bl_update
 		config

@@ -216,6 +216,9 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MC_ROLL_P>) _param_mc_roll_p,
+		(ParamFloat<px4::params::MC_ROLL_I>) _param_mc_roll_i,
+		(ParamFloat<px4::params::MC_R_INT_LIM>) _param_mc_r_int_lim,
+		(ParamFloat<px4::params::MC_ROLL_D>) _param_mc_roll_d,
 		(ParamFloat<px4::params::MC_ROLLRATE_P>) _param_mc_rollrate_p,
 		(ParamFloat<px4::params::MC_ROLLRATE_I>) _param_mc_rollrate_i,
 		(ParamFloat<px4::params::MC_RR_INT_LIM>) _param_mc_rr_int_lim,
@@ -223,6 +226,9 @@ private:
 		(ParamFloat<px4::params::MC_ROLLRATE_FF>) _param_mc_rollrate_ff,
 
 		(ParamFloat<px4::params::MC_PITCH_P>) _param_mc_pitch_p,
+		(ParamFloat<px4::params::MC_PITCH_I>) _param_mc_pitch_i,
+		(ParamFloat<px4::params::MC_P_INT_LIM>) _param_mc_p_int_lim,
+		(ParamFloat<px4::params::MC_PITCH_D>) _param_mc_pitch_d,
 		(ParamFloat<px4::params::MC_PITCHRATE_P>) _param_mc_pitchrate_p,
 		(ParamFloat<px4::params::MC_PITCHRATE_I>) _param_mc_pitchrate_i,
 		(ParamFloat<px4::params::MC_PR_INT_LIM>) _param_mc_pr_int_lim,
