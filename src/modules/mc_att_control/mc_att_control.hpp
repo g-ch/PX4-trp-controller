@@ -285,8 +285,11 @@ private:
 		(ParamInt<px4::params::MC_AIRMODE>) _param_mc_airmode
 	)
 
-	bool _is_tailsitter{false};
+    bool _is_tailsitter{false};
 
+    matrix::Vector2f _att_d;		/**< D gain for roll pitch error */
+	matrix::Vector2f _att_i;		/**< I gain for roll pitch error */
+	matrix::Vector2f _att_int_lim;		/**< integrator state limit for roll pitch loop */
 	matrix::Vector3f _rate_p;		/**< P gain for angular rate error */
 	matrix::Vector3f _rate_i;		/**< I gain for angular rate error */
 	matrix::Vector3f _rate_int_lim;		/**< integrator state limit for rate loop */

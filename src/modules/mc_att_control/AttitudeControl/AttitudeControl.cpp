@@ -63,6 +63,8 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 	const Vector3f e_z = q.dcm_z();
 	const Vector3f e_z_d = qd.dcm_z();
 	Quatf qd_red(e_z, e_z_d);
+	Vector3f ieq;
+	Vector3f deq;
 
 	if (fabsf(qd_red(1)) > (1.f - 1e-5f) || fabsf(qd_red(2)) > (1.f - 1e-5f)) {
 		// In the infinitesimal corner case where the vehicle and thrust have the completely opposite direction,
@@ -90,8 +92,25 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 	// also taking care of the antipodal unit quaternion ambiguity
 	const Vector3f eq = 2.f * math::signNoZero(qe(0)) * qe.imag();
 
-	// calculate angular rates setpoint
-	matrix::Vector3f rate_setpoint = eq.emult(_proportional_gain);
+
+	// 计算积分误差
+    ieq += eq;
+	ieq(0) = math::constrain(ieq(0),-_att_int_lim(0),_att_int_lim(0));
+	ieq(1) = math::constrain(ieq(1),-_att_int_lim(1),_att_int_lim(1));
+	// 乘以ki
+	ieq(0) *= _att_i(0);
+	ieq(1) *= _att_i(1);
+
+
+	// 计算微分误差
+	deq = eq - _last_deq;
+	_last_deq = eq;
+	// 乘以 kd
+	deq(0) = _att_d(0)*deq(0);
+	deq(1) = _att_d(1)*deq(1);
+
+    // calculate angular rates setpoint
+	matrix::Vector3f rate_setpoint = eq.emult(_proportional_gain)+ieq+deq;
 
 	// Feed forward the yaw setpoint rate.
 	// yaw_sp_move_rate is the feed forward commanded rotation around the world z-axis,

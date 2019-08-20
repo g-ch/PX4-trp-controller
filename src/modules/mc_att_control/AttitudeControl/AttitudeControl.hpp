@@ -71,6 +71,24 @@ public:
 	 */
 	void setProportionalGain(const matrix::Vector3f &proportional_gain);
 
+    /**
+    * Set Integral attitude control gain
+    * @param Integral 2D vector containing gains for roll, pitch
+    */
+    void setIntegralGain(const matrix::Vector2f &att_i){_att_i = att_i;};
+
+    /**
+    * Set Differential attitude control gain
+    * @param Differential_gain 2D vector containing gains for roll, pitch
+    */
+    void setDifferentialGain(const matrix::Vector2f &att_d){ _att_d = att_d};
+
+    /**
+    * Set Integral attitude control limit
+    * @param Integral attitude control limit 2D vector containing gains for roll, pitch
+    */
+    void setIntLimGain(const matrix::Vector2f &att_int_lim){_att_int_lim = att_int_lim};
+
 	/**
 	 * Set hard limit for output rate setpoints
 	 * @param rate_limit [rad/s] 3D vector containing limits for roll, pitch, yaw
@@ -80,5 +98,9 @@ public:
 private:
 	matrix::Vector3f _proportional_gain;
 	matrix::Vector3f _rate_limit;
+	matrix::Vector3f _last_deq;
+	matrix::Vector2f _att_int_lim;
+	matrix::Vector2f _att_i;
+	matrix::Vector2f _att_d;
 	float _yaw_w = 0.0f; /**< yaw weight [0,1] to prioritize roll and pitch */
 };

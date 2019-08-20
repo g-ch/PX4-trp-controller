@@ -104,6 +104,7 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 		_sensor_gyro_sub[i] = -1;
 	}
 
+
 	_vehicle_status.is_rotary_wing = true;
 
 	/* initialize quaternions in messages to be valid */
@@ -134,7 +135,15 @@ MulticopterAttitudeControl::parameters_updated()
 	// Store some of the parameters in a more convenient way & precompute often-used values
 	_attitude_control.setProportionalGain(Vector3f(_param_mc_roll_p.get(), _param_mc_pitch_p.get(), _param_mc_yaw_p.get()));
 
-	// rate gains
+	// angle gains
+	_att_d = Vector2f(_param_mc_roll_d.get(), _param_mc_pitch_d.get());
+    _att_i = Vector2f(_param_mc_roll_i.get(), _param_mc_pitch_i.get());
+	_att_int_lim = Vector2f(_param_mc_r_int_lim.get(), _param_mc_p_int_lim.get());
+
+	_attitude_control.setIntegralGain(_att_i);
+	_attitude_control.setDifferentialGain(_att_d);
+	_attitude_control.setIntLimGain(_att_int_lim);
+
 	_rate_p = Vector3f(_param_mc_rollrate_p.get(), _param_mc_pitchrate_p.get(), _param_mc_yawrate_p.get());
 	_rate_i = Vector3f(_param_mc_rollrate_i.get(), _param_mc_pitchrate_i.get(), _param_mc_yawrate_i.get());
 	_rate_int_lim = Vector3f(_param_mc_rr_int_lim.get(), _param_mc_pr_int_lim.get(), _param_mc_yr_int_lim.get());
@@ -609,6 +618,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	/* apply low-pass filtering to the rates for D-term */
 	Vector3f rates_filtered(_lp_filters_d.apply(rates));
 
+	// PID+前馈控制
 	_att_control = rates_p_scaled.emult(rates_err) +
 		       _rates_int -
 		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +

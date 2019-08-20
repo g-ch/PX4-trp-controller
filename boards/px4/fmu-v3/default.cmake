@@ -17,7 +17,8 @@ px4_add_board(
 		GPS1:/dev/ttyS3
 		TEL1:/dev/ttyS1
 		TEL2:/dev/ttyS2
-		TEL4:/dev/ttyS6
+		# Used for T265
+		#TEL4:/dev/ttyS6
 
 	DRIVERS
 		barometer # all available barometer drivers
@@ -90,6 +91,7 @@ px4_add_board(
 		wind_estimator
 		######################
 		#######ADD BY SDX#####
+		## already added #####
 		# usatl_modules
 		######################
 	SYSTEMCMDS

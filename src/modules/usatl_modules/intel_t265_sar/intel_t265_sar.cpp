@@ -2,6 +2,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <cstdlib>
+#include <stdlib.h>
 #include <cstring>
 #include <cerrno>
 #include <cmath>
@@ -127,10 +128,10 @@ int uart_init(const char * uart_name)
 static void usage(const char *reason)
 {
     if (reason) {
-        fprintf(stderr, "%s\n", reason);
+        printf( "%s\n", reason);
     }
 
-    fprintf(stderr, "WARN: lose para,use {start|stop|status} [param]\n\n");
+    printf( "WARN: lose para,use {start|stop|status} [param]\n\n");
     // exit(1);
 }
 
@@ -421,6 +422,5 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
     thread_running = false;
     //取消订阅
     close(uart_read);
-    fflush(stdout);
     return 0;
 }

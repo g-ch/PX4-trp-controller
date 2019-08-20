@@ -65,7 +65,7 @@ PARAM_DEFINE_FLOAT(MC_ROLL_P, 6.5f);
  * @increment 0.1
  * @group Multicopter Attitude Control
  */
-PARAM_DEFINE_FLOAT(MC_ROLL_I, 6.5f);
+PARAM_DEFINE_FLOAT(MC_ROLL_I, 0.0f);
 
 /**
  * Roll I limit
@@ -79,7 +79,7 @@ PARAM_DEFINE_FLOAT(MC_ROLL_I, 6.5f);
  * @increment 0.1
  * @group Multicopter Attitude Control
  */
-PARAM_DEFINE_FLOAT(MC_R_INT_LIM, 1.0f);
+PARAM_DEFINE_FLOAT(MC_R_INT_LIM, 0.2f);
 
 /**
  * Roll D gain
@@ -196,7 +196,7 @@ PARAM_DEFINE_FLOAT(MC_PITCH_I, 0.0f);
  * @increment 0.1
  * @group Multicopter Attitude Control
  */
-PARAM_DEFINE_FLOAT(MC_P_INT_LIM, 0.0f);
+PARAM_DEFINE_FLOAT(MC_P_INT_LIM, 0.2f);
 
 /**
  * Pitch D gain
