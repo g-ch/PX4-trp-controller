@@ -14,7 +14,8 @@
 #---------------------------------------
 # xbee_sar start
 # flow_uart start
-intel_t265_sar start
+ intel_t265_sar start
+# intel_t265 start
 # miniflow start
 # uart_debug start
 # xbee_receive start

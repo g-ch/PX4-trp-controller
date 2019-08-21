@@ -1,11 +1,11 @@
-#include <cstdio>
+#include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
-#include <cstdlib>
 #include <stdlib.h>
-#include <cstring>
-#include <cerrno>
-#include <cmath>
+#include <string.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <math.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
 #include <fcntl.h>
@@ -14,25 +14,30 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_attitude.h>
-#include <uORB/topics/distance_sensor.h>
 #include <px4_defines.h>
 #include <px4_config.h>
+#include <px4_posix.h>
+#include <px4_shutdown.h>
 #include <px4_tasks.h>
 #include <px4_time.h>
+
+#include "float.h"
+#include <math.h>
+#include <mathlib/mathlib.h>
 #include <matrix/math.hpp>
 
 
 /**
- * @file intel_t265_sar.cpp
+ * @file intel_t265.cpp
  * @author Tonser <sundxfansky@sjtu.edu.cn>
  * v1.0 2019.7.9
  *
  * 通过串口接受来自upcore board的T265位置
- * 发布ORB_ID(vehicle_visual_odometry)
- *    ORB_ID(vehicle_vision_attitude)
+ * 发布ORB_ID(vehicle_vision_position)
+ *    ORB_ID(vehicle_vision_position)
  *
- * This driver parse t265 data,publish ORB_ID(vehicle_visual_odometry)
- * and ORB_ID(vehicle_vision_attitude).
+ * This driver parse t265 data,publish ORB_ID(vehicle_vision_position)
+ * and ORB_ID(vehicle_vision_position).
  *
  * 设置内容
  * 1 开启本模块，并编译
@@ -43,10 +48,10 @@
  * 5 设置好激光定高后再尝试视觉定位，方便及时切换回来
  */
 
-#define  BYTE0(dwTemp)       ( *( (uint8_t *)(&dwTemp)	)  )
-#define  BYTE1(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 1) )
-#define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
-#define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
+// #define  BYTE0(dwTemp)       ( *( (uint8_t *)(&dwTemp)	)  )
+// #define  BYTE1(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 1) )
+// #define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
+// #define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
 
 #define T265_POS_X 0.12f
 #define T265_POS_Y 0.0f
@@ -61,13 +66,13 @@ static int daemon_task;
 #define SCALE 10000.0f
 
 
-extern "C" __EXPORT int intel_t265_sar_main(int argc, char *argv[]);
-int intel_t265_sar_thread_main(int argc, char *argv[]);
+extern "C" __EXPORT int intel_t265_main(int argc, char *argv[]);
+int intel_t265_thread_main(int argc, char *argv[]);
 
 static int uart_init(const char * uart_name);
 static int set_uart_baudrate(const int fd, unsigned int baud); //static
 static void usage(const char *reason);            //static
-orb_advert_t mavlink_log_pub_t265_sar = NULL;
+orb_advert_t mavlink_log_pub_t265 = NULL;
 
 int set_uart_baudrate(const int fd, unsigned int baud)
 {
@@ -128,19 +133,19 @@ int uart_init(const char * uart_name)
 static void usage(const char *reason)
 {
     if (reason) {
-        printf( "%s\n", reason);
+        fprintf(stderr, "%s\n", reason);
     }
 
-    printf( "WARN: lose para,use {start|stop|status} [param]\n\n");
-    // exit(1);
+    fprintf(stderr, "WARN: lose para,use {start|stop|status} [param]\n\n");
+    exit(1);
 }
 
-int intel_t265_sar_main(int argc, char *argv[])
+int intel_t265_main(int argc, char *argv[])
 {
 
-    mavlink_log_info(&mavlink_log_pub_t265_sar,"[inav] t265_sar_main on init");
+mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
 
-    if (argc < 2)
+    if (argc < 2) 
     {
         usage("[YCM]missinfg command");
     }
@@ -148,16 +153,16 @@ int intel_t265_sar_main(int argc, char *argv[])
     if (!strcmp(argv[1], "start")) {
         if (thread_running) {
             PX4_INFO("[YCM]already running\n");
-            // exit(0);
+            exit(0);
         }
 
         thread_should_exit = false;
-        daemon_task = px4_task_spawn_cmd("intel_t265_sar",
-                                         SCHED_DEFAULT,
-                                         SCHED_PRIORITY_DEFAULT,
-                                         2500,
-                                         intel_t265_sar_thread_main,
-                                         (argv) ? (char * const *)&argv[2] : (char * const *)NULL);
+        daemon_task = px4_task_spawn_cmd("intel_t265",
+                         SCHED_DEFAULT,
+                         SCHED_PRIORITY_DEFAULT,
+                         2500,
+                         intel_t265_thread_main,
+                         (argv) ? (char * const *)&argv[2] : (char * const *)NULL);
         return 0;
     }
 
@@ -174,83 +179,65 @@ int intel_t265_sar_main(int argc, char *argv[])
             warnx("[YCM]stopped");
         }
 
-        return 0;
+       return 0;
     }
 
     usage("unrecognized command");
     return 1;
 }
 
-int intel_t265_sar_thread_main(int argc, char *argv[])
+int intel_t265_thread_main(int argc, char *argv[])
 {
-    mavlink_log_info(&mavlink_log_pub_t265_sar,"t265 run ");
-    u_char data = '0';
-    u_char send_data = '0';
+    mavlink_log_info(&mavlink_log_pub_t265,"t265 run ");
+    char data = '0';
     int uart_read = uart_init(SERIAL_COM_T265);//fmuv5 ttys3 fmuv2,v3 ttys6
-    if(uart_read==0)
+    if(false == uart_read)
     {
-        mavlink_log_critical(&mavlink_log_pub_t265_sar,"[YCM]t265 uart init is failed\n");
+         mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]t265 uart init is failed\n");
+         return -1;
+    }
+    if(false == set_uart_baudrate(uart_read,BAUDRATE)){
+        mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]set_t265_uart_baudrate is failed\n");
         return -1;
     }
-    if(set_uart_baudrate(uart_read,BAUDRATE)==0){
-        mavlink_log_critical(&mavlink_log_pub_t265_sar,"[YCM]set_t265_uart_baudrate is failed\n");
-        return -1;
-    }
-    mavlink_log_info(&mavlink_log_pub_t265_sar,"[YCM]t265 uart init is successful\n");
+    mavlink_log_info(&mavlink_log_pub_t265,"[YCM]t265 uart init is successful\n");
     thread_running = true;
 
     // 定义话题结构
     struct vehicle_odometry_s vision_position;
     // 初始化数据
     memset(&vision_position, 0 , sizeof(vision_position));
-    u_char data_buffer[29];
-    u_char send_data_buffer[23];
+    char data_buffer[28];
     // 输出开关
-    bool t265_debug_enable = false;
-    bool print_received_data = false;
+    bool t265_debug_enable = 0;
+    bool print_received_data = 1;
+    // bool publish_vision_data = 1;
     // 程序出现未知问题，关闭位置修正，加入yaw角度修正
     bool _correct_pos = 0;
     int pos[3];//pos[0] = x;pos[1] = y;pos[2] = z;
     int angle[3];// angle[0]=roll,angle[1]=pitch,angle[2]=yaw
     int check;
     int sum;
-    int _send_sum;
     bool _is_t265_data_check_true;
     float float_angle[3];
+    // int t265_uart_error_num = 0;
+
     float t265_R[3][3];
     float t265_position[3] = {T265_POS_X,T265_POS_Y,T265_POS_Z};
     float trans_pos_t265[3] = {0.0f,0.0f,0.0f};
-    int _int_distance;
-    int _int_accel[3];
 
     orb_advert_t _vision_position_pub = nullptr;
-    int distance_sub_fd = orb_subscribe(ORB_ID(distance_sensor));
-    orb_set_interval(distance_sub_fd, 10);
-    struct distance_sensor_s current_distance;
-    memset(&current_distance,0, sizeof(current_distance));
-    int accel_sub_fd = orb_subscribe(ORB_ID(vehicle_local_position));
-    orb_set_interval(accel_sub_fd, 10);
-    struct vehicle_local_position_s current_accel;
-    memset(&current_accel,0, sizeof(current_accel));
-    // px4_pollfd_struct_t fds[] = {
-    //         { .fd = distance_sub_fd,   .events = POLLIN },
-    //         { .fd = accel_sub_fd,   .events = POLLIN },
-    //         /* there could be more file descriptors here, in the form like:
-    //          * { .fd = other_sub_fd,   .events = POLLIN },
-    //          */
-    // };
-    // int poll_ret = px4_poll(fds, 1, 1000);
+
 
     while(thread_running)
-    {
+   {
         if(t265_debug_enable){
             static char t265_buffer[31];
-            read(uart_read,&t265_buffer,31);
-            // for(int k = 0;k < 31;++k){
-            //     data = '0';
-            //     read(uart_read,&data,1);
-            //     t265_buffer[k] = data;
-            // }
+            for(int k = 0;k < 31;++k){
+                data = '0';
+                read(uart_read,&data,1);
+                t265_buffer[k] = data;
+            }
             PX4_INFO("%X,%X,%X,%X,%X,%X,%X,%X,%X,%X,"
                      "%X,%X,%X,%X,%X,%X,%X,%X,%X,%X,"
                      "%X,%X,%X,%X,%X,%X,%X,%X,%X,%X,"
@@ -269,55 +256,10 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
                 data = '0';
                 read(uart_read,&data,1);
                 if (data == 0x22){
-                    // read(uart_read,&data_buffer,28);
-                    for (int index = 0;index<29;index++){
+                    for (int index = 0;index<28;index++){
                         data = '0';
                         read(uart_read,&data,1);
                         data_buffer[index] = data;
-                        // send_data = '0';
-                        // write(uart_read,&send_data,1);
-                    }
-                    if((int)(data_buffer[28])==21){
-                        // if((poll_ret>0)&&(fds[0].revents & POLLIN)){
-                        // if((poll_ret>0)){
-                        orb_copy(ORB_ID(distance_sensor),distance_sub_fd,&current_distance);
-                        orb_copy(ORB_ID(vehicle_local_position),accel_sub_fd,&current_accel);
-                        // }
-                        _int_distance = (int)SCALE*(current_distance.current_distance);
-                        _int_accel[0] = (int)SCALE*(current_accel.ax);
-                        _int_accel[1] = (int)SCALE*(current_accel.ay);
-                        _int_accel[2] = (int)SCALE*(current_accel.yaw);
-
-                        send_data_buffer[0] = 0xFE;
-                        send_data_buffer[1] = 0x22;
-
-                        send_data_buffer[2] = BYTE3(_int_distance);
-                        send_data_buffer[3] = BYTE2(_int_distance);
-                        send_data_buffer[4] = BYTE1(_int_distance);
-                        send_data_buffer[5] = BYTE0(_int_distance);
-
-                        for (int send_buffer_index = 0;send_buffer_index<3;send_buffer_index++){
-                            send_data_buffer[6+send_buffer_index*4] =BYTE3(_int_accel[send_buffer_index]);
-                            send_data_buffer[7+send_buffer_index*4] =BYTE2(_int_accel[send_buffer_index]);
-                            send_data_buffer[8+send_buffer_index*4] =BYTE1(_int_accel[send_buffer_index]);
-                            send_data_buffer[9+send_buffer_index*4] =BYTE0(_int_accel[send_buffer_index]);
-                        }//9+8=17,下一个18
-                        _send_sum = _int_accel[0]+_int_accel[1]+_int_accel[2]+_int_distance;
-
-                        send_data_buffer[18] = BYTE3(_send_sum);
-                        send_data_buffer[19] = BYTE2(_send_sum);
-                        send_data_buffer[20] = BYTE1(_send_sum);
-                        send_data_buffer[21] = BYTE0(_send_sum);
-
-                        send_data_buffer[22] = 0x14;
-
-
-
-                        for (int index = 0;index<23;index++){
-                            send_data = '0';
-                            send_data = send_data_buffer[index];
-                            write(uart_read,&send_data,1);
-                        }
                     }
                     for (int i = 0;i < 3;i++){
                         pos[i] = (int)(data_buffer[4*i]<<24|data_buffer[4*i+1]<<16|data_buffer[4*i+2]<<8|data_buffer[4*i+3]);
@@ -339,7 +281,7 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
                     // vision_position.v_xy_valid = true;
                     // vision_position.v_z_valid = true;
 
-                    // vision_attitude.timestamp = hrt_absolute_time();
+                    // vision_position.timestamp = hrt_absolute_time();
 
                     float_angle[0] = (float)angle[0]/SCALE;
                     // 需要验证是不是这样，同时此处取飞机数据更好，后续优化
@@ -384,41 +326,40 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
 
                     matrix::Quatf q(matrix::Eulerf(float_angle[0], float_angle[1], float_angle[2]));
 
-                    // vision_attitude.q[2] = -vision_attitude.q[2];
-                    // vision_attitude.q[3] = -vision_attitude.q[3];
+                    // vision_position.q[2] = -vision_position.q[2];
+                    // vision_position.q[3] = -vision_position.q[3];
                     q.copyTo(vision_position.q);
                     if(print_received_data){
-                        PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_t265_data_check_true:%1d,flag %1d",
+                        PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_t265_data_check_true:%1d",
                                  (double)vision_position.x,(double)vision_position.y,(double)vision_position.z,
                                  (double)float_angle[0],(double)float_angle[1],(double)float_angle[2],
                                  (double)vision_position.q[0],(double)vision_position.q[1],(double)vision_position.q[2],(double)vision_position.q[3],
-                                 (int)_is_t265_data_check_true,(int)data_buffer[28]
+                                 (int)_is_t265_data_check_true
                         );
                     }
-                    int inst_pos = 0;
-                    // int inst_att = 0;
+                    int inst = 0;
                     if(_is_t265_data_check_true){
                         // PX4_WARN("published");
-                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst_pos, ORB_PRIO_DEFAULT);
-                        // orb_publish_auto(ORB_ID(vehicle_vision_attitude), &_vision_attitude_pub, &vision_attitude, &inst_att, ORB_PRIO_DEFAULT);
+                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst, ORB_PRIO_DEFAULT);
                     } else{
                         // PX4_WARN("NOT published");
                     }
-                }
+                    }
                 else{
                     // PX4_WARN("DATA WRONG 22222 %X,error_num:%\t4d",data,++t265_uart_error_num);
                 }
-
-                // data = '0';
-                // read(uart_read,&data,1);
+                //校验
+                data = '0';
+                read(uart_read,&data,1);
             }
             else{
                 // PX4_WARN("DATA WRONG 11111 %X,error_num:%\t4d",data,++t265_uart_error_num);
             }
         }
-    }
+   }
     thread_running = false;
     //取消订阅
     close(uart_read);
+    fflush(stdout);
     return 0;
 }

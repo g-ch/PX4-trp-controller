@@ -101,7 +101,6 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 	ieq(0) *= _att_i(0);
 	ieq(1) *= _att_i(1);
 
-
 	// 计算微分误差
 	deq = eq - _last_deq;
 	_last_deq = eq;

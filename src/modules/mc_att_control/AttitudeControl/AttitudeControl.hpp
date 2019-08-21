@@ -81,19 +81,19 @@ public:
     * Set Differential attitude control gain
     * @param Differential_gain 2D vector containing gains for roll, pitch
     */
-    void setDifferentialGain(const matrix::Vector2f &att_d){ _att_d = att_d};
+    void setDifferentialGain(const matrix::Vector2f &att_d){ _att_d = att_d;};
 
     /**
     * Set Integral attitude control limit
     * @param Integral attitude control limit 2D vector containing gains for roll, pitch
     */
-    void setIntLimGain(const matrix::Vector2f &att_int_lim){_att_int_lim = att_int_lim};
+    void setIntLimGain(const matrix::Vector2f &att_int_lim){_att_int_lim = att_int_lim;};
 
 	/**
 	 * Set hard limit for output rate setpoints
 	 * @param rate_limit [rad/s] 3D vector containing limits for roll, pitch, yaw
 	 */
-	void setRateLimit(const matrix::Vector3f &rate_limit) { _rate_limit = rate_limit; }
+	void setRateLimit(const matrix::Vector3f &rate_limit) { _rate_limit = rate_limit;}
 
 private:
 	matrix::Vector3f _proportional_gain;
