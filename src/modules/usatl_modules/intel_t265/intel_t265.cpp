@@ -137,7 +137,7 @@ static void usage(const char *reason)
     }
 
     fprintf(stderr, "WARN: lose para,use {start|stop|status} [param]\n\n");
-    exit(1);
+    // exit(1);
 }
 
 int intel_t265_main(int argc, char *argv[])
@@ -153,7 +153,7 @@ mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
     if (!strcmp(argv[1], "start")) {
         if (thread_running) {
             PX4_INFO("[YCM]already running\n");
-            exit(0);
+            // exit(0);
         }
 
         thread_should_exit = false;
@@ -189,7 +189,7 @@ mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
 int intel_t265_thread_main(int argc, char *argv[])
 {
     mavlink_log_info(&mavlink_log_pub_t265,"t265 run ");
-    char data = '0';
+    unsigned char data = '0';
     int uart_read = uart_init(SERIAL_COM_T265);//fmuv5 ttys3 fmuv2,v3 ttys6
     if(false == uart_read)
     {
