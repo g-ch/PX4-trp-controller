@@ -28,16 +28,15 @@
 
 
 /**
- * @file intel_t265.cpp
+ * @file xbee_pose.cpp
  * @author Tonser <sundxfansky@sjtu.edu.cn>
- * v1.0 2019.7.9
+ * v1.0 2019.8.31
  *
- * 通过串口接受来自upcore board的T265位置
+ * 通过串口接受来自vicon的位置
  * 发布ORB_ID(vehicle_vision_position)
- *    ORB_ID(vehicle_vision_position)
  *
- * This driver parse t265 data,publish ORB_ID(vehicle_vision_position)
- * and ORB_ID(vehicle_vision_position).
+ * This driver parse vicon pose data,publish ORB_ID(vehicle_vision_position)
+ * and ORB_ID(vehicle_visual_odometry).
  *
  * 设置内容
  * 1 开启本模块，并编译
@@ -53,26 +52,21 @@
 // #define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
 // #define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
 
-#define T265_POS_X 0.12f
-#define T265_POS_Y 0.0f
-#define T265_POS_Z -0.02f
-
-
-#define SERIAL_COM_T265 "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
-#define BAUDRATE 19200
+#define SERIAL_COM_XBEE "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
+#define BAUDRATE 57600
 static bool thread_should_exit = false;
 static bool thread_running = false;
 static int daemon_task;
 #define SCALE 10000.0f
 
 
-extern "C" __EXPORT int intel_t265_main(int argc, char *argv[]);
-int intel_t265_thread_main(int argc, char *argv[]);
+extern "C" __EXPORT int xbee_pose_main(int argc, char *argv[]);
+int xbee_pose_thread_main(int argc, char *argv[]);
 
 static int uart_init(const char * uart_name);
 static int set_uart_baudrate(const int fd, unsigned int baud); //static
 static void usage(const char *reason);            //static
-orb_advert_t mavlink_log_pub_t265 = NULL;
+orb_advert_t mavlink_log_pub_xbee_pose = NULL;
 
 int set_uart_baudrate(const int fd, unsigned int baud)
 {
@@ -142,10 +136,10 @@ static void usage(const char *reason)
     // exit(1);
 }
 
-int intel_t265_main(int argc, char *argv[])
+int xbee_pose_main(int argc, char *argv[])
 {
 
-mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
+mavlink_log_info(&mavlink_log_pub_xbee_pose,"[inav] t265_main on init");
 
     if (argc < 2) 
     {
@@ -159,11 +153,11 @@ mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
         }
 
         thread_should_exit = false;
-        daemon_task = px4_task_spawn_cmd("intel_t265",
+        daemon_task = px4_task_spawn_cmd("xbee_pose",
                          SCHED_DEFAULT,
                          SCHED_PRIORITY_DEFAULT,
                          2500,
-                         intel_t265_thread_main,
+                         xbee_pose_thread_main,
                          (argv) ? (char * const *)&argv[2] : (char * const *)NULL);
         return 0;
     }
@@ -188,21 +182,21 @@ mavlink_log_info(&mavlink_log_pub_t265,"[inav] t265_main on init");
     return 1;
 }
 
-int intel_t265_thread_main(int argc, char *argv[])
+int xbee_pose_thread_main(int argc, char *argv[])
 {
-    mavlink_log_info(&mavlink_log_pub_t265,"t265 run ");
+    mavlink_log_info(&mavlink_log_pub_xbee_pose,"xbee run ");
     unsigned char data = '0';
-    int uart_read = uart_init(SERIAL_COM_T265);//fmuv5 ttys3 fmuv2,v3 ttys6
+    int uart_read = uart_init(SERIAL_COM_XBEE);//fmuv5 ttys3 fmuv2,v3 ttys6
     if(false == uart_read)
     {
-         mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]t265 uart init is failed\n");
+         mavlink_log_critical(&mavlink_log_pub_xbee_pose,"[YCM]xbee pose uart init is failed\n");
          return -1;
     }
     if(false == set_uart_baudrate(uart_read,BAUDRATE)){
-        mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]set_t265_uart_baudrate is failed\n");
+        mavlink_log_critical(&mavlink_log_pub_xbee_pose,"[YCM]set_xbee_uart_baudrate is failed\n");
         return -1;
     }
-    mavlink_log_info(&mavlink_log_pub_t265,"[YCM]t265 uart init is successful\n");
+    mavlink_log_info(&mavlink_log_pub_xbee_pose,"[YCM]xbee uart init is successful\n");
     thread_running = true;
 
     // 定义话题结构
@@ -211,29 +205,22 @@ int intel_t265_thread_main(int argc, char *argv[])
     memset(&vision_position, 0 , sizeof(vision_position));
     char data_buffer[28];
     // 输出开关
-    bool t265_debug_enable = 0;
+    bool xbee_debug_enable = 0;
     bool print_received_data = 1;
     // bool publish_vision_data = 1;
     // 程序出现未知问题，关闭位置修正，加入yaw角度修正
-    bool _correct_pos = 0;
     int pos[3];//pos[0] = x;pos[1] = y;pos[2] = z;
     int angle[3];// angle[0]=roll,angle[1]=pitch,angle[2]=yaw
     int check;
     int sum;
-    bool _is_t265_data_check_true;
+    bool _is_xbee_data_check_true;
     float float_angle[3];
-    // int t265_uart_error_num = 0;
-
-    float t265_R[3][3];
-    float t265_position[3] = {T265_POS_X,T265_POS_Y,T265_POS_Z};
-    float trans_pos_t265[3] = {0.0f,0.0f,0.0f};
-
     orb_advert_t _vision_position_pub = nullptr;
 
 
     while(thread_running)
    {
-        if(t265_debug_enable){
+        if(xbee_debug_enable){
             static char t265_buffer[31];
             for(int k = 0;k < 31;++k){
                 data = '0';
@@ -269,7 +256,7 @@ int intel_t265_thread_main(int argc, char *argv[])
                     }
                     check = (int)(data_buffer[24]<<24|data_buffer[25]<<16|data_buffer[26]<<8|data_buffer[27]);
                     sum = (int)(pos[0]+pos[1]+pos[2]+angle[0]+angle[1]+angle[2]);
-                    _is_t265_data_check_true = (check == sum);
+                    _is_xbee_data_check_true = (check == sum);
                     vision_position.timestamp = hrt_absolute_time();
 
                     vision_position.x = (float)pos[0]/SCALE;
@@ -291,58 +278,24 @@ int intel_t265_thread_main(int argc, char *argv[])
                     float_angle[2] = ((float)angle[2]/SCALE);
 
                     // 修正位置
-                    if(_correct_pos){
-
-                        t265_R[0][0] = cosf(float_angle[1])*cosf(float_angle[2]);
-                        t265_R[0][1] = -cosf(float_angle[1])*sinf(float_angle[2]);
-                        t265_R[0][2] = sinf(float_angle[1]);
-                        t265_R[1][0] = cosf(float_angle[0])*sinf(float_angle[2])+sinf(float_angle[0])*sinf(float_angle[1])*cosf(float_angle[2]);
-                        t265_R[1][1] = cosf(float_angle[0])*cosf(float_angle[2])-sinf(float_angle[0])*sinf(float_angle[1])*sinf(float_angle[2]);
-                        t265_R[1][2] = -sinf(float_angle[0])*cosf(float_angle[1]);
-                        t265_R[2][0] = sinf(float_angle[0])*sinf(float_angle[2])-cosf(float_angle[0])*sinf(float_angle[1])*cosf(float_angle[2]);
-                        t265_R[2][1] = sinf(float_angle[0])*cosf(float_angle[2])+cosf(float_angle[0])*sinf(float_angle[1])*sinf(float_angle[2]);
-                        t265_R[2][2] = cosf(float_angle[0])*cosf(float_angle[1]);
-
-                        //初始化旋转结果
-                        trans_pos_t265[0] = 0.0f;
-                        trans_pos_t265[1] = 0.0f;
-                        trans_pos_t265[2] = 0.0f;
-                        //旋转矩阵计算
-                        for(int m = 0;m<3;m++){
-                            for(int n=0;n<3;n++){
-                                trans_pos_t265[m] += t265_R[m][n]*t265_position[n];
-                            }
-                        }
-                        // PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f",
-                        //          (double)(t265_position[0]-trans_pos_t265[0]),
-                        //          (double)(t265_position[1]-trans_pos_t265[1]),
-                        //          (double)(t265_position[2]-trans_pos_t265[2]),
-                        //          (double)float_angle[0],
-                        //          (double)float_angle[1],
-                        //          (double)float_angle[2]
-                        // );
-                        vision_position.x = vision_position.x+t265_position[0]-trans_pos_t265[0];
-                        vision_position.y = vision_position.y+t265_position[1]-trans_pos_t265[1];
-                        vision_position.z = vision_position.z+t265_position[2]-trans_pos_t265[2];
-                    }
-
                     matrix::Quatf q(matrix::Eulerf(float_angle[0], float_angle[1], float_angle[2]));
 
                     // vision_position.q[2] = -vision_position.q[2];
                     // vision_position.q[3] = -vision_position.q[3];
                     q.copyTo(vision_position.q);
+                    vision_position.
                     if(print_received_data){
-                        PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_t265_data_check_true:%1d",
+                        PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_xbee_data_check_true:%1d",
                                  (double)vision_position.x,(double)vision_position.y,(double)vision_position.z,
                                  (double)float_angle[0],(double)float_angle[1],(double)float_angle[2],
                                  (double)vision_position.q[0],(double)vision_position.q[1],(double)vision_position.q[2],(double)vision_position.q[3],
-                                 (int)_is_t265_data_check_true
+                                 (int)_is_xbee_data_check_true
                         );
                     }
                     int inst = 0;
-                    if(_is_t265_data_check_true){
+                    if(_is_xbee_data_check_true){
                         // PX4_WARN("published");
-                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst, ORB_PRIO_DEFAULT);
+                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst, ORB_PRIO_HIGH);
                     } else{
                         // PX4_WARN("NOT published");
                     }

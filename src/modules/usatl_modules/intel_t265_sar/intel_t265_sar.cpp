@@ -53,7 +53,7 @@
 #define T265_POS_Z -0.02f
 
 
-#define SERIAL_COM_T265 "/dev/ttyS6" //fmuv5ttys3 fmuv2,v3 ttys6
+#define SERIAL_COM_T265 "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
 #define BAUDRATE 19200
 static bool thread_should_exit = false;
 static bool thread_running = false;

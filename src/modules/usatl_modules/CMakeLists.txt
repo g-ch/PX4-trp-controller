@@ -6,3 +6,4 @@
 #add_subdirectory(miniflow)
 add_subdirectory(intel_t265)
 add_subdirectory(intel_t265_sar)
+add_subdirectory(xbee_pose)
