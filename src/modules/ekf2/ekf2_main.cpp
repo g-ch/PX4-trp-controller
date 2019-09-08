@@ -1504,6 +1504,7 @@ void Ekf2::run()
 				_vehicle_local_position_pub.update();
 
 				// publish vehicle odometry data
+				// added by sdx  dont publish odom by ekf
 				_vehicle_odometry_pub.update();
 
 				if (_ekf.global_position_is_valid() && !_preflt_fail) {

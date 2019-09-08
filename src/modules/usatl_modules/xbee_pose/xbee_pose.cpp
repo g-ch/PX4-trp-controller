@@ -283,7 +283,15 @@ int xbee_pose_thread_main(int argc, char *argv[])
                     // vision_position.q[2] = -vision_position.q[2];
                     // vision_position.q[3] = -vision_position.q[3];
                     q.copyTo(vision_position.q);
-                    vision_position.
+                    vision_position.vx = NAN;
+                    vision_position.vy = NAN;
+                    vision_position.vz = NAN;
+                    vision_position.velocity_covariance[0] = NAN;
+                    vision_position.pose_covariance[0] = NAN;
+                    vision_position.rollspeed = NAN;
+                    vision_position.pitchspeed = NAN;
+                    vision_position.yawspeed = NAN;
+                    vision_position.local_frame = 0;
                     if(print_received_data){
                         PX4_INFO(" x: %2.4f,y: %2.4f,z: %2.4f,roll: %2.4f,pitch :%2.4f yaw:%2.4f,w:%2.4f,x:%2.4f,y:%2.4f,z:%2.4f _is_xbee_data_check_true:%1d",
                                  (double)vision_position.x,(double)vision_position.y,(double)vision_position.z,
