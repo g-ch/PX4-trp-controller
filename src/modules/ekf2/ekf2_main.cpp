@@ -264,6 +264,7 @@ private:
 	int _sensors_sub{ -1};
 	int _status_sub{ -1};
 	int _vehicle_land_detected_sub{ -1};
+	int _xbee_pose_sub{ -1}; //added by sdx
 
 	// because we can have several distance sensor instances with different orientations
 	int _range_finder_subs[ORB_MULTI_MAX_INSTANCES] {};
@@ -640,6 +641,7 @@ Ekf2::Ekf2():
 	_sensors_sub = orb_subscribe(ORB_ID(sensor_combined));
 	_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_vehicle_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
+	_xbee_pose_sub = orb_subscribe(ORB_ID(vehicle_visual_odometry));
 
 	for (unsigned i = 0; i < GPS_MAX_RECEIVERS; i++) {
 		_gps_subs[i] = orb_subscribe_multi(ORB_ID(vehicle_gps_position), i);
@@ -669,6 +671,7 @@ Ekf2::~Ekf2()
 	orb_unsubscribe(_sensors_sub);
 	orb_unsubscribe(_status_sub);
 	orb_unsubscribe(_vehicle_land_detected_sub);
+	orb_unsubscribe(_xbee_pose_sub);
 
 	for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 		orb_unsubscribe(_range_finder_subs[i]);
@@ -741,8 +744,10 @@ void Ekf2::run()
 	vehicle_land_detected_s vehicle_land_detected = {};
 	vehicle_status_s vehicle_status = {};
 	sensor_selection_s sensor_selection = {};
+    vehicle_odometry_s xbee_position = {};
 
-	while (!should_exit()) {
+
+    while (!should_exit()) {
 		int ret = px4_poll(fds, sizeof(fds) / sizeof(fds[0]), 1000);
 
 		if (!(fds[0].revents & POLLIN)) {
@@ -1336,12 +1341,20 @@ void Ekf2::run()
 				_ekf.get_position(position);
 				const float lpos_x_prev = lpos.x;
 				const float lpos_y_prev = lpos.y;
-				lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
-				lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
-				lpos.z = position[2];
+				// change to vicon
+                orb_copy(ORB_ID(vehicle_visual_odometry), _xbee_pose_sub, &xbee_position);
+
 
 				// Vehicle odometry position
-				odom.x = lpos.x;
+                lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
+                lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
+                // lpos.z = position[2];
+                // lpos.x = xbee_position.x;
+                // lpos.y = xbee_position.y;
+                lpos.z = xbee_position.z;
+
+
+                odom.x = lpos.x;
 				odom.y = lpos.y;
 				odom.z = lpos.z;
 
