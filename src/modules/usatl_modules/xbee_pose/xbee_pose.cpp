@@ -12,7 +12,6 @@
 #include <uORB/topics/vehicle_odometry.h>
 #include <px4_defines.h>
 #include <uORB/topics/parameter_update.h>
-#include <px4_module_params.h>
 #include <px4_config.h>
 #include <px4_posix.h>
 #include <px4_shutdown.h>
