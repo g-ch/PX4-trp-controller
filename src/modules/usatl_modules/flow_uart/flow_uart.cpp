@@ -109,7 +109,7 @@ static void usage(const char *reason)
     }
 
     printf( "WARN: lose para,use {start|stop|status} [param]\n\n");
-    exit(1);
+//    exit(1);
 }
 
 int flow_uart_main(int argc, char *argv[])
@@ -126,7 +126,7 @@ mavlink_log_info(&mavlink_log_pub_upflow,"[inav] upixels_flow_main on init");
     if (!strcmp(argv[1], "start")) {
         if (thread_running) {
             PX4_INFO("[YCM]already running\n");
-            exit(0);
+//            exit(0);
         }
 
         thread_should_exit = false;
