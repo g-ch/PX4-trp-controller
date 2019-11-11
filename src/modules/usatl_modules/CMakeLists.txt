@@ -3,7 +3,7 @@
 #add_subdirectory(xbee_sar)
 #add_subdirectory(xbee_send)
 #add_subdirectory(flow_uart)
-#add_subdirectory(miniflow)
+add_subdirectory(miniflow)
 add_subdirectory(intel_t265)
 add_subdirectory(intel_t265_sar)
 add_subdirectory(xbee_pose)
