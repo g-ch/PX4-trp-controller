@@ -24,12 +24,12 @@ miniflow start
 #---------------------------------------
 
 ll40ls start i2c
-#ll40ls start i2c
-#ll40ls start i2c
-#ll40ls start i2c
-#ll40ls start i2c
-#ll40ls start i2c
-#ll40ls start i2c
+ll40ls start i2c
+ll40ls start i2c
+ll40ls start i2c
+ll40ls start i2c
+ll40ls start i2c
+ll40ls start i2c
 
 
 ###############################################################################
