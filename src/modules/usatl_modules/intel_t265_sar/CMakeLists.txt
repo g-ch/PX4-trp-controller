@@ -37,6 +37,8 @@ px4_add_module(
         MAIN intel_t265_sar
         # MAIN uart_debug_debug
         STACK 3000
+        COMPILE_FLAGS
+            -Wno-unused-result
         SRCS
         # uart_debug_debug.c
         intel_t265_sar.cpp

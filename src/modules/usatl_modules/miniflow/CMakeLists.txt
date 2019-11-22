@@ -37,6 +37,8 @@ px4_add_module(
 	MAIN miniflow
 	# MAIN flow_uart_debug
 	STACK 3000
+	COMPILE_FLAGS
+		-Wno-unused-result
 	SRCS	
 		# flow_uart_debug.c
 	miniflow.cpp

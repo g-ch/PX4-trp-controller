@@ -37,6 +37,8 @@ px4_add_module(
 	MAIN xbee_pose
 	# MAIN uart_debug_debug
 	STACK 3000
+	COMPILE_FLAGS
+		-Wno-unused-result
 	SRCS	
 		# uart_debug_debug.c
 		xbee_pose.cpp

@@ -37,6 +37,8 @@ px4_add_module(
 	MAIN flow_uart
 	# MAIN flow_uart_debug
 	STACK 3000
+	COMPILE_FLAGS
+		-Wno-unused-result
 	SRCS
 		# flow_uart_debug.c
         flow_uart.cpp

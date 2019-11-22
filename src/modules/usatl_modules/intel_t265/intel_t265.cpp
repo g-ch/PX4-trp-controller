@@ -193,12 +193,12 @@ int intel_t265_thread_main(int argc, char *argv[])
     mavlink_log_info(&mavlink_log_pub_t265,"t265 run ");
     unsigned char data = '0';
     int uart_read = uart_init(SERIAL_COM_T265);//fmuv5 ttys3 fmuv2,v3 ttys6
-    if(false == uart_read)
+    if(!uart_read)
     {
          mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]t265 uart init is failed\n");
          return -1;
     }
-    if(false == set_uart_baudrate(uart_read,BAUDRATE)){
+    if(!set_uart_baudrate(uart_read,BAUDRATE)){
         mavlink_log_critical(&mavlink_log_pub_t265,"[YCM]set_t265_uart_baudrate is failed\n");
         return -1;
     }
