@@ -1348,10 +1348,10 @@ void Ekf2::run()
 				// Vehicle odometry position
                 lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
                 lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
-                // lpos.z = position[2];
+                lpos.z = position[2];
                 // lpos.x = xbee_position.x;
                 // lpos.y = xbee_position.y;
-                lpos.z = xbee_position.z;
+                // lpos.z = xbee_position.z;
 
 
                 odom.x = lpos.x;
