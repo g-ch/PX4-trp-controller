@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
@@ -267,6 +266,8 @@ int xbee_att_control_thread_main(int argc, char *argv[])
 
                 //判断是不是要回传****************
                 if(data_buffer[20]==21){
+                    //回传数据***********
+
                     // //更新姿态数据
                     // orb_check(attitude_sub_fd, &att_updated);
                     // if(att_updated){
@@ -283,6 +284,7 @@ int xbee_att_control_thread_main(int argc, char *argv[])
                     send_fatt[0] = (float)current_euler.phi(); //roll
                     send_fatt[1] = (float)current_euler.theta(); //pitch
                     send_fatt[2] = (float)current_euler.psi(); //yaw
+
 
                     // Local NED to body-NED Dcm matrix
                     matrix::Dcmf Rlb(matrix::Quatf(odom.q));
@@ -332,7 +334,9 @@ int xbee_att_control_thread_main(int argc, char *argv[])
         _offboard_control_mode.ignore_position = true;
         _offboard_control_mode.ignore_velocity = true;
         _offboard_control_mode.ignore_acceleration_force = true;
-        _offboard_control_mode.ignore_bodyrate = ignore_bodyrate_msg;
+        _offboard_control_mode.ignore_bodyrate_x = ignore_bodyrate_msg;
+        _offboard_control_mode.ignore_bodyrate_y = ignore_bodyrate_msg;
+        _offboard_control_mode.ignore_bodyrate_z = ignore_bodyrate_msg;
         _offboard_control_mode.ignore_attitude = ignore_attitude_msg;
         _offboard_control_mode.timestamp = hrt_absolute_time();
         orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &_offboard_control_mode);
@@ -347,7 +351,9 @@ int xbee_att_control_thread_main(int argc, char *argv[])
         if(_control_mode.flag_control_offboard_enabled&&recv_data_check){
             if (!(_offboard_control_mode.ignore_attitude)) {
                 att_sp.timestamp = hrt_absolute_time();
-
+                matrix::Eulerf sp_euler(recv_fatt_sp[0],recv_fatt_sp[1],recv_fatt_sp[2]);
+                matrix::Quatf sp_q(sp_euler);
+                sp_q.copyTo(att_sp.q_d);
                 att_sp.q_d_valid = true;
                 att_sp.roll_body = recv_fatt_sp[0];
                 att_sp.pitch_body = recv_fatt_sp[1];
@@ -356,7 +362,7 @@ int xbee_att_control_thread_main(int argc, char *argv[])
 
                 if (!_offboard_control_mode.ignore_thrust) {
                     // att_sp.thrust_body[0]用于 固定翼
-                    att_sp.thrust_body[2] = recv_fatt_sp[3];
+                    att_sp.thrust_body[2] = recv_fatt_sp[3]; //
                 }
             }
             orb_publish(ORB_ID(vehicle_attitude_setpoint), _att_sp_pub, &att_sp);

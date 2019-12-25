@@ -266,12 +266,6 @@ private:
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 
 	int _sensors_sub{ -1};
-<<<<<<< HEAD
-	int _status_sub{ -1};
-	int _vehicle_land_detected_sub{ -1};
-	int _xbee_pose_sub{ -1}; //added by sdx
-=======
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 
 	// because we can have several distance sensor instances with different orientations
 	uORB::Subscription _range_finder_subs[ORB_MULTI_MAX_INSTANCES] {{ORB_ID(distance_sensor), 0}, {ORB_ID(distance_sensor), 1}, {ORB_ID(distance_sensor), 2}, {ORB_ID(distance_sensor), 3}};
@@ -636,20 +630,6 @@ Ekf2::Ekf2():
 	_param_ekf2_move_test(_params->is_moving_scaler)
 {
 	_sensors_sub = orb_subscribe(ORB_ID(sensor_combined));
-<<<<<<< HEAD
-	_status_sub = orb_subscribe(ORB_ID(vehicle_status));
-	_vehicle_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
-	_xbee_pose_sub = orb_subscribe(ORB_ID(vehicle_visual_odometry));
-
-	for (unsigned i = 0; i < GPS_MAX_RECEIVERS; i++) {
-		_gps_subs[i] = orb_subscribe_multi(ORB_ID(vehicle_gps_position), i);
-	}
-
-	for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
-		_range_finder_subs[i] = orb_subscribe_multi(ORB_ID(distance_sensor), i);
-	}
-=======
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 
 	// initialise parameter cache
 	updateParams();
@@ -663,20 +643,6 @@ Ekf2::~Ekf2()
 	perf_free(_perf_ekf_update);
 
 	orb_unsubscribe(_sensors_sub);
-<<<<<<< HEAD
-	orb_unsubscribe(_status_sub);
-	orb_unsubscribe(_vehicle_land_detected_sub);
-	orb_unsubscribe(_xbee_pose_sub);
-
-	for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
-		orb_unsubscribe(_range_finder_subs[i]);
-	}
-
-	for (unsigned i = 0; i < GPS_MAX_RECEIVERS; i++) {
-		orb_unsubscribe(_gps_subs[i]);
-	}
-=======
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 }
 
 int Ekf2::print_status()
@@ -741,7 +707,7 @@ void Ekf2::run()
 	vehicle_land_detected_s vehicle_land_detected = {};
 	vehicle_status_s vehicle_status = {};
 	sensor_selection_s sensor_selection = {};
-    vehicle_odometry_s xbee_position = {};
+
 
 
     while (!should_exit()) {
@@ -1306,16 +1272,13 @@ void Ekf2::run()
 				const float lpos_x_prev = lpos.x;
 				const float lpos_y_prev = lpos.y;
 				// change to vicon
-                orb_copy(ORB_ID(vehicle_visual_odometry), _xbee_pose_sub, &xbee_position);
 
 
 				// Vehicle odometry position
-                lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
-                lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
-                lpos.z = position[2];
-                // lpos.x = xbee_position.x;
-                // lpos.y = xbee_position.y;
-                // lpos.z = xbee_position.z;
+				lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
+				lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
+				lpos.z = position[2];
+
 
 
                 odom.x = lpos.x;
@@ -1481,12 +1444,7 @@ void Ekf2::run()
 				_vehicle_local_position_pub.update();
 
 				// publish vehicle odometry data
-<<<<<<< HEAD
-				// added by sdx  dont publish odom by ekf
-				_vehicle_odometry_pub.update();
-=======
 				_vehicle_odometry_pub.publish(odom);
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 
 				if (_ekf.global_position_is_valid() && !_preflt_fail) {
 					// generate and publish global position data
