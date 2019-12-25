@@ -107,10 +107,10 @@ int uart_init(const char * uart_name)
 static void usage(const char *reason)
 {
     if (reason) {
-        fprintf(stderr, "%s\n", reason);
+        printf( "%s\n", reason);
     }
 
-    fprintf(stderr, "WARN: lose para,use {start|stop|status} [param]\n\n");
+    printf( "WARN: lose para,use {start|stop|status} [param]\n\n");
 //    exit(1);
 }
 
@@ -235,7 +235,6 @@ int miniflow_thread_main(int argc, char *argv[])
    }
     thread_running = false;
     close(uart_read);
-    fflush(stdout);
     return 0;
 
 }
