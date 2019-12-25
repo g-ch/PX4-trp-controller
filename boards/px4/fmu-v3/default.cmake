@@ -87,17 +87,9 @@ px4_add_board(
 		sih
 		vmount
 		vtol_att_control
-<<<<<<< HEAD
-		wind_estimator
-		######################
-		#######ADD BY SDX#####
-		## already added #####
-		# usatl_modules
-		######################
-=======
 		airspeed_selector
 
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
+
 	SYSTEMCMDS
 		bl_update
 		config

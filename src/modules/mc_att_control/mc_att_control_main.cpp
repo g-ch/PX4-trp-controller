@@ -66,16 +66,7 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 	WorkItem(px4::wq_configurations::rate_ctrl),
 	_loop_perf(perf_alloc(PC_ELAPSED, "mc_att_control"))
 {
-<<<<<<< HEAD
-	for (uint8_t i = 0; i < MAX_GYRO_COUNT; i++) {
-		_sensor_gyro_sub[i] = -1;
-	}
-
-
-	_vehicle_status.is_rotary_wing = true;
-=======
 	_vehicle_status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 
 	/* initialize quaternions in messages to be valid */
 	_v_att.q[0] = 1.f;
@@ -432,16 +423,9 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 	/* apply low-pass filtering to the rates for D-term */
 	Vector3f rates_filtered(_lp_filters_d.apply(rates));
 
-<<<<<<< HEAD
-	// PID+前馈控制
-	_att_control = rates_p_scaled.emult(rates_err) +
-		       _rates_int -
-		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
-=======
 	_att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) +
 				     _rates_int -
 				     rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt) +
->>>>>>> f3aba02654a40759c6c032f53f19ea64298fc56e
 		       _rate_ff.emult(_rates_sp);
 
 	_rates_prev = rates;
