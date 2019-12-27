@@ -12,7 +12,6 @@
 #include <systemlib/mavlink_log.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/vehicle_odometry.h>
-#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
@@ -38,7 +37,7 @@
 #define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
 
 
-#define SERIAL_COM "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
+#define SERIAL_COM "/dev/ttyS3" //fmuv5 ttys3 fmuv2,v3 ttys6 UART口
 #define BAUDRATE 19200
 static bool thread_should_exit = false;
 static bool thread_running = false;
@@ -123,7 +122,7 @@ static void usage(const char *reason)
 int xbee_att_control_main(int argc, char *argv[])
 {
 
-    mavlink_log_info(&mavlink_log_pub_xbee_att_control,"[inav] t265_sar_main on init");
+    mavlink_log_info(&mavlink_log_pub_xbee_att_control,"[inav] xbee_att_control on init");
 
     if (argc < 2)
     {
@@ -232,19 +231,10 @@ int xbee_att_control_thread_main(int argc, char *argv[])
     int odom_sub_fd = orb_subscribe(ORB_ID(vehicle_odometry));
     vehicle_odometry_s odom;
     bool odom_updated = false;
-
     while(thread_running)
     {
         //开启串口解析数据***********************
-
-        // debug使用****
-        // static char debug_buffer[20];
-        // read(uart_read,&debug_buffer,20);
-        // PX4_INFO("%X,%X,%X,%X,%X,",
-        //          debug_buffer[0],debug_buffer[1],debug_buffer[2],debug_buffer[3],debug_buffer[4],debug_buffer[5]);
-
-
-        //解析数据格式 FE 22 (int)roll (int)pitch (int)yaw (int)thrust (int)sum  21回传数据/19不需要回传数据
+        //解析数据格式 FE 22 (int)roll (int)pitch (int)yaw (int)thrust (int)sum  15回传数据/14不需要回传数据
         data = '0';
         read(uart_read,&data,1);
         if(data == 0xFE){
@@ -257,74 +247,86 @@ int xbee_att_control_thread_main(int argc, char *argv[])
                     data_buffer[index] = data;
                 }
             }
-            if((int)(data_buffer[20])==21||(int)(data_buffer[20])==19){
+            if(data_buffer[20]==0x14||data_buffer[20]==0x15){
                 for (int i = 0; i < 5; ++i) {
                     recv_iatt_sp[i] = (int)(data_buffer[4*i]<<24|data_buffer[4*i+1]<<16|data_buffer[4*i+2]<<8|data_buffer[4*i+3]);
-                    recv_fatt_sp[i] = (float)recv_fatt_sp[i]/SCALE;
+                    recv_fatt_sp[i] = (float)(recv_iatt_sp[i])/SCALE;
                 }
                 recv_data_check = (recv_iatt_sp[4]==(recv_iatt_sp[0]+recv_iatt_sp[1]+recv_iatt_sp[2]+recv_iatt_sp[3]));
+                // PX4_INFO("roll: %d, pitch: %d, yaw: %d, thrust: %d, check: %d",
+                //          recv_iatt_sp[0],recv_iatt_sp[1],recv_iatt_sp[2],recv_iatt_sp[3],(int)recv_data_check
+                // );
+                // PX4_INFO("roll: %2.4f, pitch: %2.4f, yaw: %2.4f, thrust: %2.4f, check: %d",
+                //          (double)recv_fatt_sp[0],(double)recv_fatt_sp[1],(double)recv_fatt_sp[2],(double)recv_fatt_sp[3],(int)recv_data_check
+                // );
 
                 //判断是不是要回传****************
-                if(data_buffer[20]==21){
-                    //回传数据***********
+                //回传数据***********
+                //回传数据协议 FE 23 roll pitch yaw vx vy vz sum 19
 
-                    // //更新姿态数据
-                    // orb_check(attitude_sub_fd, &att_updated);
-                    // if(att_updated){
-                    //     orb_copy(ORB_ID(vehicle_attitude), attitude_sub_fd, &att);
-                    // }
+                // //更新姿态数据
+                // orb_check(attitude_sub_fd, &att_updated);
+                // if(att_updated){
+                //     orb_copy(ORB_ID(vehicle_attitude), attitude_sub_fd, &att);
+                // }
+                if(data_buffer[20]==0x15){
+                //更新里程计数据
 
-                    //更新里程计数据
-                    orb_check(odom_sub_fd, &odom_updated);
-                    if(odom_updated){
-                        orb_copy(ORB_ID(vehicle_odometry), odom_sub_fd, &odom);
-                    }
-                    //赋值
-                    current_euler = matrix::Quatf(odom.q);
-                    send_fatt[0] = (float)current_euler.phi(); //roll
-                    send_fatt[1] = (float)current_euler.theta(); //pitch
-                    send_fatt[2] = (float)current_euler.psi(); //yaw
+                orb_check(odom_sub_fd, &odom_updated);
+                if(odom_updated){
+                    orb_copy(ORB_ID(vehicle_odometry), odom_sub_fd, &odom);
+                }
+                //赋值
+                current_euler = matrix::Quatf(odom.q);
+                send_fatt[0] = (float)current_euler.phi(); //roll
+                send_fatt[1] = (float)current_euler.theta(); //pitch
+                send_fatt[2] = (float)current_euler.psi(); //yaw
 
+                // Local NED to body-NED Dcm matrix
+                matrix::Dcmf Rlb(matrix::Quatf(odom.q));
+                matrix::Vector3f linvel_body(Rlb * matrix::Vector3f(odom.vx, odom.vy, odom.vz));
 
-                    // Local NED to body-NED Dcm matrix
-                    matrix::Dcmf Rlb(matrix::Quatf(odom.q));
-                    matrix::Vector3f linvel_body(Rlb * matrix::Vector3f(odom.vx, odom.vy, odom.vz));
+                send_fvel[0] = (float)linvel_body(0);
+                send_fvel[1] = (float)linvel_body(1);
+                send_fvel[2] = (float)linvel_body(2);
 
-                    send_fvel[0] = (float)linvel_body(0);
-                    send_fvel[1] = (float)linvel_body(1);
-                    send_fvel[2] = (float)linvel_body(2);
+                for (int i = 0; i < 3; ++i) {
+                    send_iatt[i] = (int)(send_fatt[i]*SCALE);
+                    send_ivel[i] = (int)(send_fvel[i]*SCALE);
+                }
 
-                    for (int i = 0; i < 3; ++i) {
-                        send_iatt[i] = (int)(send_fatt[i]*SCALE);
-                        send_ivel[i] = (int)(send_fvel[i]*SCALE);
-                    }
+                send_sum = send_iatt[0]+send_iatt[1]+send_iatt[2]+send_ivel[0]+send_ivel[1]+send_ivel[2];
+                send_data_buffer[0] = 0xFE;
+                send_data_buffer[1] = 0x23;
 
-                    send_sum = send_iatt[0]+send_iatt[1]+send_iatt[2]+send_ivel[0]+send_ivel[1]+send_ivel[2];
-                    send_data_buffer[0] = 0xFE;
-                    send_data_buffer[1] = 0x23;
+                for (int j = 0; j < 3; ++j) {
+                    send_data_buffer[2+j*4] = BYTE3(send_iatt[j]);
+                    send_data_buffer[3+j*4] = BYTE2(send_iatt[j]);
+                    send_data_buffer[4+j*4] = BYTE1(send_iatt[j]);
+                    send_data_buffer[5+j*4] = BYTE0(send_iatt[j]);
+                    send_data_buffer[14+j*4] = BYTE3(send_ivel[j]);
+                    send_data_buffer[15+j*4] = BYTE2(send_ivel[j]);
+                    send_data_buffer[16+j*4] = BYTE1(send_ivel[j]);
+                    send_data_buffer[17+j*4] = BYTE0(send_ivel[j]);
+                }
 
-                    for (int j = 0; j < 3; ++j) {
-                        send_data_buffer[2+j*4] = BYTE3(send_iatt[j]);
-                        send_data_buffer[3+j*4] = BYTE2(send_iatt[j]);
-                        send_data_buffer[4+j*4] = BYTE1(send_iatt[j]);
-                        send_data_buffer[5+j*4] = BYTE0(send_iatt[j]);
-                        send_data_buffer[14+j*4] = BYTE3(send_iatt[j]);
-                        send_data_buffer[15+j*4] = BYTE2(send_iatt[j]);
-                        send_data_buffer[16+j*4] = BYTE1(send_iatt[j]);
-                        send_data_buffer[17+j*4] = BYTE0(send_iatt[j]);
-                    }
+                send_data_buffer[26] = BYTE3(send_sum);
+                send_data_buffer[27] = BYTE2(send_sum);
+                send_data_buffer[28] = BYTE1(send_sum);
+                send_data_buffer[29] = BYTE0(send_sum);
+                send_data_buffer[30] = 0x19;
 
-                    send_data_buffer[26] = BYTE3(send_sum);
-                    send_data_buffer[27] = BYTE2(send_sum);
-                    send_data_buffer[28] = BYTE1(send_sum);
-                    send_data_buffer[29] = BYTE0(send_sum);
-                    send_data_buffer[30] = 0x19;
+                // PX4_INFO("current: roll: %2.4f, pitch: %2.4f, yaw: %2.4f, vx: %2.4f, vy: %2.4f, vz: %2.4f",
+                //          (double)send_fatt[0],(double)send_fatt[1],(double)send_fatt[2],
+                //          (double)send_fvel[0],(double)send_fvel[1],(double)send_fvel[2]
+                // );
 
-                    for (int k = 0; k < 31; ++k) {
-                        send_data = '0';
-                        send_data = send_data_buffer[k];
-                        write(uart_read,&send_data,1);
-                    }
+                for (int k = 0; k < 31; ++k) {
+                    send_data = '0';
+                    send_data = send_data_buffer[k];
+                    write(uart_read,&send_data,1);
+                }
+                    // write(uart_read,send_data_buffer,31);
                 }
             }
         }

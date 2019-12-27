@@ -17,19 +17,20 @@
 # xbee_pose start
 # intel_t265_sar start
 # intel_t265 start
-miniflow start
+# miniflow start
 # uart_debug start
 # xbee_receive start
 # xbee_send start
+xbee_att_control start
 #---------------------------------------
 
-ll40ls start i2c
-ll40ls start i2c
-ll40ls start i2c
-ll40ls start i2c
-ll40ls start i2c
-ll40ls start i2c
-ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
+#ll40ls start i2c
 
 
 ###############################################################################
