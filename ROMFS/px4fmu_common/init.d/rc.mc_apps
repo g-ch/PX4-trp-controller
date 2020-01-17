@@ -21,7 +21,8 @@
 # uart_debug start
 # xbee_receive start
 # xbee_send start
-xbee_att_control start
+# xbee_att_control start
+mesh_xbee_att_control start
 #---------------------------------------
 
 #ll40ls start i2c
