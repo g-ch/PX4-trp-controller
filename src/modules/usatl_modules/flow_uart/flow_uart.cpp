@@ -212,12 +212,12 @@ int flow_uart_thread_main(int argc, char *argv[])
         //解码 串口信息
     	read(uart_read,&data,1);
     	// PX4_WARN("warnxxxxxxxxxxxx!!!! [%X]",data);
-        if((data == 0xFE))
+        if(data == 0xFE)
         {
 
             data = '0';
             read(uart_read,&data,1);
-            if((data == 0x0A))
+            if(data == 0x0A)
             {
                 for(int k = 0;k < 6;++k)
                 {
