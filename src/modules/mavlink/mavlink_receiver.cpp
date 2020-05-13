@@ -987,7 +987,7 @@ MavlinkReceiver::handle_message_vision_position_estimate(mavlink_message_t *msg)
 
 	vehicle_odometry_s visual_odom{};
 
-	visual_odom.timestamp = _mavlink_timesync.sync_stamp(ev.usec);
+	visual_odom.timestamp = hrt_absolute_time();
 	visual_odom.x = ev.x;
 	visual_odom.y = ev.y;
 	visual_odom.z = ev.z;
@@ -1027,7 +1027,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 
 	vehicle_odometry_s odometry{};
 
-	odometry.timestamp = _mavlink_timesync.sync_stamp(odom.time_usec);
+	odometry.timestamp = hrt_absolute_time();
 
 	/* The position is in the local NED frame */
 	odometry.x = odom.x;
@@ -1210,7 +1210,6 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 		 * bits set for everything else and then send set_attitude_target containing the thrust and ignore bits
 		 * set for everything else.
 		 */
-
 		/*
 		 * if attitude or body rate have been used (not ignored) previously and this message only sends
 		 * throttle and has the ignore bits set for attitude and rates don't change the flags for attitude and
