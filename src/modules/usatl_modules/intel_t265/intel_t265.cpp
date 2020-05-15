@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <math.h>
 #include <drivers/drv_hrt.h>
@@ -11,19 +9,9 @@
 #include <fcntl.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_odometry.h>
-#include <uORB/topics/vehicle_attitude.h>
 #include <px4_defines.h>
-#include <px4_config.h>
-#include <px4_posix.h>
-#include <px4_shutdown.h>
 #include <px4_tasks.h>
-#include <px4_time.h>
-
-#include "float.h"
-#include <math.h>
-#include <mathlib/mathlib.h>
 #include <matrix/math.hpp>
 
 
@@ -53,13 +41,13 @@
 // #define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
 // #define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
 
-#define T265_POS_X 0.12f
+#define T265_POS_X 0.0f
 #define T265_POS_Y 0.0f
-#define T265_POS_Z -0.02f
+#define T265_POS_Z 0.0f
 
 
-#define SERIAL_COM_T265 "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
-#define BAUDRATE 19200
+#define SERIAL_COM_T265 "/dev/ttyS2" //fmuv5ttys3 fmuv2,v3 ttys6
+#define BAUDRATE 57600
 static bool thread_should_exit = false;
 static bool thread_running = false;
 static int daemon_task;

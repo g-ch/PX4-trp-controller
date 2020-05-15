@@ -1790,7 +1790,17 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 
 	/* fallthrough */
 	case MAVLINK_MODE_CUSTOM:
-		//stream nothing
+	    //TODO 添加pose回传/system state
+        configure_stream_local("DISTANCE_SENSOR", 0.5f);
+        configure_stream_local("ESTIMATOR_STATUS", 0.5f);
+        configure_stream_local("EXTENDED_SYS_STATE", 1.0f);
+        configure_stream_local("SYS_STATUS", 5.0f);
+        configure_stream_local("PING", 0.1f);
+        configure_stream_local("LOCAL_POSITION_NED", 20.0f);
+
+
+
+            //stream nothing
 		break;
 
 	case MAVLINK_MODE_CONFIG:
