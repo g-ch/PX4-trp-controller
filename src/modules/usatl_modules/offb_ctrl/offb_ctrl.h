@@ -32,25 +32,57 @@
  ****************************************************************************/
 
 #pragma once
-
+#include <cstdio>
+#include <termios.h>
+#include <unistd.h>
 #include <px4_module.h>
+#include <cstring>
+#include <cerrno>
+#include <cmath>
+#include <drivers/drv_hrt.h>
+#include <systemlib/err.h>
+#include <fcntl.h>
+#include <systemlib/mavlink_log.h>
+#include <uORB/uORB.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_odometry.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/distance_sensor.h>
+#include <px4_defines.h>
+#include <px4_config.h>
+#include <px4_tasks.h>
+#include <px4_time.h>
+#include <matrix/math.hpp>
 #include <px4_module_params.h>
+#include <uORB/Publication.hpp>
+#include <uORB/PublicationMulti.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/parameter_update.h>
+#include <uORB/topics/rate_ctrl_status.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_land_detected.h>
+#include <uORB/topics/landing_gear.h>
+#include <px4_log.h>
+#include <px4_posix.h>
+#include <uORB/topics/parameter_update.h>
+#include <uORB/topics/sensor_combined.h>
+extern "C" __EXPORT int offb_ctrl_main(int argc, char *argv[]);
 
-extern "C" __EXPORT int module_main(int argc, char *argv[]);
 
-
-class Module : public ModuleBase<Module>, public ModuleParams
+class OffboardControl : public ModuleBase<OffboardControl>, public ModuleParams
 {
 public:
-	Module(int example_param, bool example_flag);
+    OffboardControl();
 
-	virtual ~Module() = default;
+	virtual ~OffboardControl() = default;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
-
-	/** @see ModuleBase */
-	static Module *instantiate(int argc, char *argv[]);
 
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
@@ -64,19 +96,35 @@ public:
 	/** @see ModuleBase::print_status() */
 	int print_status() override;
 
+	bool serial_init();
+
 private:
 
-	/**
-	 * Check for parameter changes and update them if needed.
-	 * @param parameter_update_sub uorb subscription to parameter_update
-	 * @param force for a parameter update
-	 */
-	void parameters_update(int parameter_update_sub, bool force = false);
+	uORB::Subscription _params_sub{ORB_ID(parameter_update)};			/**< parameter updates subscription */
+    hrt_abstime _task_start{hrt_absolute_time()};
+    hrt_abstime _time_now{0};
+    hrt_abstime _time_last{0};
+    int _ser_buadrate{57600};
+    int _ser_com_num{0};
+    int _drone_id{0};
+    int _serial_fd{-1};
+    bool _print_debug_msg{true};
 
+
+    /**
+    * initialize some vectors/matrices from parameters
+    */
+	void parameters_updated();
+    /**
+	 * Check for parameter update and handle it.
+	 */
+	void parameters_update_poll();
 
 	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::SYS_AUTOSTART>) _param_sys_autostart,   /**< example parameter */
-		(ParamInt<px4::params::SYS_AUTOCONFIG>) _param_sys_autoconfig  /**< another parameter */
+		(ParamInt<px4::params::OFC_SER_COM>) _param_ofc_ser_com,
+		(ParamInt<px4::params::OFC_SER_BAUD>) _param_ofc_ser_baud,
+		(ParamBool<px4::params::OFC_DEB_PRT>) _param_ofc_deb_prt,
+		(ParamBool<px4::params::OFC_CUR_ID>) _param_ofc_cur_id
 	)
 };
 

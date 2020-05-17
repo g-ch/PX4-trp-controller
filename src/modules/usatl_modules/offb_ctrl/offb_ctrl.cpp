@@ -33,15 +33,14 @@
 
 #include "offb_ctrl.h"
 
-#include <px4_getopt.h>
-#include <px4_log.h>
-#include <px4_posix.h>
-
-#include <uORB/topics/parameter_update.h>
-#include <uORB/topics/sensor_combined.h>
 
 
-int Module::print_status()
+OffboardControl::OffboardControl():
+    ModuleParams(nullptr){
+    parameters_updated();
+}
+
+int OffboardControl::print_status()
 {
 	PX4_INFO("Running");
 	// TODO: print additional runtime information about the state of the module
@@ -49,93 +48,93 @@ int Module::print_status()
 	return 0;
 }
 
-int Module::custom_command(int argc, char *argv[])
+int OffboardControl::custom_command(int argc, char *argv[])
 {
-	/*
-	if (!is_running()) {
-		print_usage("not running");
-		return 1;
-	}
-
-	// additional custom commands can be handled like this:
-	if (!strcmp(argv[0], "do-something")) {
-		get_instance()->do_something();
-		return 0;
-	}
-	 */
-
 	return print_usage("unknown command");
 }
 
 
-int Module::task_spawn(int argc, char *argv[])
+int OffboardControl::task_spawn(int argc, char *argv[])
 {
-	_task_id = px4_task_spawn_cmd("module",
-				      SCHED_DEFAULT,
-				      SCHED_PRIORITY_DEFAULT,
-				      1024,
-				      (px4_main_t)&run_trampoline,
-				      (char *const *)argv);
+    OffboardControl *instance = new OffboardControl();
 
-	if (_task_id < 0) {
-		_task_id = -1;
-		return -errno;
-	}
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
 
-	return 0;
-}
-
-Module *Module::instantiate(int argc, char *argv[])
-{
-	int example_param = 0;
-	bool example_flag = false;
-	bool error_flag = false;
-
-	int myoptind = 1;
-	int ch;
-	const char *myoptarg = nullptr;
-
-	// parse CLI arguments
-	while ((ch = px4_getopt(argc, argv, "p:f", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'p':
-			example_param = (int)strtol(myoptarg, nullptr, 10);
-			break;
-
-		case 'f':
-			example_flag = true;
-			break;
-
-		case '?':
-			error_flag = true;
-			break;
-
-		default:
-			PX4_WARN("unrecognized flag");
-			error_flag = true;
-			break;
+		if (instance->serial_init()) {
+			return PX4_OK;
 		}
-	}
 
-	if (error_flag) {
-		return nullptr;
-	}
-
-	Module *instance = new Module(example_param, example_flag);
-
-	if (instance == nullptr) {
+	} else {
 		PX4_ERR("alloc failed");
 	}
 
-	return instance;
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
 }
 
-Module::Module(int example_param, bool example_flag)
-	: ModuleParams(nullptr)
-{
+bool OffboardControl::serial_init() {
+    switch (_ser_com_num){
+        case 0:
+            _serial_fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
+            break;
+        case 1:
+            _serial_fd = open("/dev/ttyS1", O_RDWR | O_NOCTTY);
+            break;
+        case 2:
+            _serial_fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY);
+            break;
+        case 3:
+            _serial_fd = open("/dev/ttyS3", O_RDWR | O_NOCTTY);
+            break;
+        case 4:
+            _serial_fd = open("/dev/ttyS4", O_RDWR | O_NOCTTY);
+            break;
+        case 5:
+            _serial_fd = open("/dev/ttyS5", O_RDWR | O_NOCTTY);
+            break;
+    }
+
+    if (_serial_fd < 0) {
+        err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
+        return false;
+    }
+    int speed;
+    switch (_ser_buadrate) {
+        case 9600:   speed = B9600;   break;
+        case 19200:  speed = B19200;  break;
+        case 38400:  speed = B38400;  break;
+        case 57600:  speed = B57600;  break;
+        case 115200: speed = B115200; break;
+        default:
+            PX4_INFO("ERR: baudrate: %d\n", _ser_buadrate);
+            return -EINVAL;
+    }
+    struct termios uart_config;
+    int termios_state;
+    tcgetattr(_serial_fd, &uart_config);
+    uart_config.c_oflag &= ~ONLCR;
+    uart_config.c_cflag &= ~(CSTOPB | PARENB);
+    if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
+        PX4_INFO("ERR: %d (cfsetispeed)\n", termios_state);
+        return false;
+    }
+    if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
+        PX4_INFO("ERR: %d (cfsetospeed)\n", termios_state);
+        return false;
+    }
+    if ((termios_state = tcsetattr(_serial_fd, TCSANOW, &uart_config)) < 0) {
+        PX4_INFO("ERR: %d (tcsetattr)\n", termios_state);
+        return false;
+    }
+    return true;
 }
 
-void Module::run()
+void OffboardControl::run()
 {
 	// Example: run the loop synchronized to the sensor_combined topic publication
 	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
@@ -145,8 +144,7 @@ void Module::run()
 	fds[0].events = POLLIN;
 
 	// initialize parameters
-	int parameter_update_sub = orb_subscribe(ORB_ID(parameter_update));
-	parameters_update(parameter_update_sub, true);
+	parameters_update_poll();
 
 	while (!should_exit()) {
 
@@ -169,32 +167,28 @@ void Module::run()
 			// TODO: do something with the data...
 
 		}
-
-
-		parameters_update(parameter_update_sub);
+        parameters_update_poll();
 	}
 
-	orb_unsubscribe(sensor_combined_sub);
-	orb_unsubscribe(parameter_update_sub);
 }
 
-void Module::parameters_update(int parameter_update_sub, bool force)
+void OffboardControl::parameters_updated() {
+    _ser_com_num = _param_ofc_ser_com.get();
+    _ser_buadrate = _param_ofc_ser_baud.get();
+    _print_debug_msg = _param_ofc_deb_prt.get();
+    _drone_id = _param_ofc_cur_id.get();
+}
+
+void OffboardControl::parameters_update_poll()
 {
-	bool updated;
-	struct parameter_update_s param_upd;
-
-	orb_check(parameter_update_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(parameter_update), parameter_update_sub, &param_upd);
-	}
-
-	if (force || updated) {
+	parameter_update_s param_upd;
+	if (_params_sub.update(&param_upd)) {
 		updateParams();
+		parameters_updated();
 	}
 }
 
-int Module::print_usage(const char *reason)
+int OffboardControl::print_usage(const char *reason)
 {
 	if (reason) {
 		PX4_WARN("%s\n", reason);
@@ -225,7 +219,7 @@ $ module start -f -p 42
 	return 0;
 }
 
-int module_main(int argc, char *argv[])
+int offb_ctrl_main(int argc, char *argv[])
 {
-	return Module::main(argc, argv);
+	return OffboardControl::main(argc, argv);
 }
