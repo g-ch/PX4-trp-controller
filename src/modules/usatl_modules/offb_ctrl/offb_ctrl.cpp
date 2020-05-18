@@ -199,7 +199,7 @@ OffboardControl::run()
                 break;
             case CURRENT_STATE :
                 _current_send_state = parse_msg_type<SEND_CURRENT_STATE >();
-                process_recv_state_data()
+                process_recv_state_data();
                 send_back_msg();
                 break;
 		    case SETPOINT:
@@ -231,7 +231,7 @@ OffboardControl::run()
 void
 OffboardControl::parse_income_i3data(bool clear_sum){
     if(clear_sum)_msg_sum_chk = 0x00;
-    memset(_char_12buffer, 0,sizeof(_char_12buffer))
+    memset(&_char_12buffer, 0,sizeof(_char_12buffer));
     for (int i = 0; i < 12; ++i) {
         _cdata_buffer = '0';
         read(_serial_fd,&_cdata_buffer,1);
@@ -239,22 +239,22 @@ OffboardControl::parse_income_i3data(bool clear_sum){
         _msg_sum_chk+=_char_12buffer[i];
     }
     for (int j = 0; j < 3; ++j) {
-        _income_3_idata[j] = (int)(_char_12buffer[4*j]<<24|_char_12buffer[4*i+1]<<16|
-                                    _char_12buffer[4*i+2]<<8|_char_12buffer[4*i+3]);
+        _income_3_idata[j] = (int)(_char_12buffer[4*j]<<24|_char_12buffer[4*j+1]<<16|
+                                    _char_12buffer[4*j+2]<<8|_char_12buffer[4*j+3]);
     }
 }
 
 void
 OffboardControl::parse_income_i1data(bool clear_sum){
     if(clear_sum)_msg_sum_chk = 0x00;
-    memset(_char_4buffer, 0,sizeof(_char_4buffer))
+    memset(&_char_4buffer, 0,sizeof(_char_4buffer));
     for (int i = 0; i < 4; ++i) {
         _cdata_buffer = '0';
         read(_serial_fd,&_cdata_buffer,1);
         _char_4buffer[i] = _cdata_buffer;
         _msg_sum_chk+=_char_4buffer[i];
     }
-    _income_1_idata = (int)(buffer[0]<<24|buffer[1]<<16|buffer[2]<<8|buffer[3]);
+    _income_1_idata = (int)(_char_4buffer[0]<<24|_char_4buffer[1]<<16|_char_4buffer[2]<<8|_char_4buffer[3]);
 }
 
 void
@@ -321,7 +321,11 @@ OffboardControl::process_command() {
 
 void
 OffboardControl::send_back_msg(){
-    if(_current_back_info==DO_NOTHING){
+    if(_current_back_info==ONLY_POSITION){
+
+    }else if(_current_back_info==ONLY_IMU){
+
+    }else if(_current_back_info==POSITION_AND_IMU){
 
     }
 }
@@ -334,10 +338,11 @@ void OffboardControl::process_recv_state_data() {
         vision_position.y = (float)_income_3_idata[1]/SCALE;
         vision_position.z = (float)_income_3_idata[2]/SCALE;
         parse_income_i3data(false);
-        matrix::Quatf q(matrix::Eulerf(
-                        (float)_income_3_idata[0]/SCALE,
-                        (float)_income_3_idata[1]/SCALE,
-                        (float)_income_3_idata[2]/SCALE));
+        float rpy[3];
+        rpy[0] = (float)_income_3_idata[0]/SCALE;
+        rpy[1] = (float)_income_3_idata[1]/SCALE;
+        rpy[2] = (float)_income_3_idata[2]/SCALE;
+        matrix::Quatf q(matrix::Eulerf(rpy[0], rpy[1], rpy[2]));
         q.copyTo(vision_position.q);
         if(msg_checked()){
             orb_publish_auto(ORB_ID(vehicle_visual_odometry),
@@ -345,7 +350,7 @@ void OffboardControl::process_recv_state_data() {
                     &vision_position, nullptr, ORB_PRIO_DEFAULT);
         }else{
             _msg_sum_chk = 0x00;
-            memset(vision_position,0, sizeof(vision_position));
+            memset(&vision_position,0, sizeof(vision_position));
         }
     }else if(_current_send_state==SEND_NED_POSITION){
         vision_position.timestamp = hrt_absolute_time();
@@ -359,7 +364,7 @@ void OffboardControl::process_recv_state_data() {
                              &vision_position, nullptr, ORB_PRIO_DEFAULT);
         }else{
             _msg_sum_chk = 0x00;
-            memset(vision_position,0, sizeof(vision_position));
+            memset(&vision_position,0, sizeof(vision_position));
         }
     }
 }

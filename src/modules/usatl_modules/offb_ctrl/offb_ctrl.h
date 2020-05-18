@@ -110,10 +110,10 @@ private:
 	uORB::Subscription    _global_position_sub{ORB_ID(parameter_update)};			/**< global_position updates subscription */
 
 
-	orb_advert_t _vision_position_pub{nullptr};
+	orb_advert_t           _vision_position_pub{nullptr};
 
-    struct vehicle_odometry_s vision_position{};
-    struct
+    struct                 vehicle_odometry_s vision_position{};
+    struct                 vehicle_local_position_s local_position{};
 
 
     hrt_abstime           _task_start{hrt_absolute_time()};
