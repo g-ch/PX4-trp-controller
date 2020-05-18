@@ -53,28 +53,32 @@ int OffboardControl::custom_command(int argc, char *argv[])
 	return print_usage("unknown command");
 }
 
-
-int OffboardControl::task_spawn(int argc, char *argv[])
+OffboardControl *OffboardControl::instantiate(int argc, char *argv[])
 {
     OffboardControl *instance = new OffboardControl();
 
-	if (instance) {
-		_object.store(instance);
-		_task_id = task_id_is_work_queue;
+    if (instance == nullptr) {
+        PX4_ERR("alloc failed");
+    }
 
-		if (instance->serial_init()) {
-			return PX4_OK;
-		}
+    return instance;
+}
 
-	} else {
-		PX4_ERR("alloc failed");
-	}
+int OffboardControl::task_spawn(int argc, char *argv[])
+{
+    _task_id = px4_task_spawn_cmd("offb_ctrl",
+                                  SCHED_DEFAULT,
+                                  SCHED_PRIORITY_DEFAULT,
+                                  2048,
+                                  (px4_main_t)&run_trampoline,
+                                  (char *const *)argv);
 
-	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
+    if (_task_id < 0) {
+        _task_id = -1;
+        return -errno;
+    }
 
-	return PX4_ERROR;
+    return 0;
 }
 
 bool OffboardControl::serial_init() {
@@ -98,7 +102,6 @@ bool OffboardControl::serial_init() {
             _serial_fd = open("/dev/ttyS5", O_RDWR | O_NOCTTY);
             break;
     }
-
     if (_serial_fd < 0) {
         err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
         return false;
@@ -131,11 +134,13 @@ bool OffboardControl::serial_init() {
         PX4_INFO("ERR: %d (tcsetattr)\n", termios_state);
         return false;
     }
+    PX4_INFO("offb_ctrl ser init");
     return true;
 }
 
 void OffboardControl::run()
 {
+    serial_init();
 	// Example: run the loop synchronized to the sensor_combined topic publication
 	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 
@@ -147,7 +152,6 @@ void OffboardControl::run()
 	parameters_update_poll();
 
 	while (!should_exit()) {
-
 		// wait for up to 1000ms for data
 		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
 
@@ -165,8 +169,8 @@ void OffboardControl::run()
 			struct sensor_combined_s sensor_combined;
 			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub, &sensor_combined);
 			// TODO: do something with the data...
-
 		}
+        PX4_INFO("running OK!");
         parameters_update_poll();
 	}
 

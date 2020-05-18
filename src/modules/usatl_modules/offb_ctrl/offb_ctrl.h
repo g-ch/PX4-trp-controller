@@ -84,6 +84,7 @@ public:
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
 
+	static OffboardControl *instantiate(int argc, char *argv[]);
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
 

@@ -48,7 +48,7 @@
  * @value 2 Dev-ttys2 for fum-v2-v3-v4-v5 telem2
  * @value 3 Dev-ttys3 for fum-v2-v3-v4 gps. for fmuv5 telem4
  * @value 4 Dev-ttys4 for fum-v2-v3-v4 serial4 for fmuv5 telem3
- * @group Offboard Control
+ * @group EKF2
  */
 PARAM_DEFINE_INT32(OFC_SER_COM, 1);
 
@@ -58,7 +58,7 @@ PARAM_DEFINE_INT32(OFC_SER_COM, 1);
  * ether print debug msg
  *
  * @boolean
- * @group Offboard Control
+ * @group EKF2
  */
 PARAM_DEFINE_INT32(OFC_DEB_PRT, 1);
 
@@ -72,7 +72,7 @@ PARAM_DEFINE_INT32(OFC_DEB_PRT, 1);
  * @value 57600 Baudrate 57600
  * @value 38400 Baudrate 38400
  * @value 115200 Baudrate 115200
- * @group Offboard Control
+ * @group EKF2
  */
 PARAM_DEFINE_INT32(OFC_SER_BAUD, 57600);
 
@@ -87,7 +87,7 @@ PARAM_DEFINE_INT32(OFC_SER_BAUD, 57600);
  * @value 3 Drone id 3
  * @value 4 Drone id 4
  * @value 5 Drone id 5
- * @group Offboard Control
+ * @group EKF2
  */
 PARAM_DEFINE_INT32(OFC_CUR_ID, 0);
 
