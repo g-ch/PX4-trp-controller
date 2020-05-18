@@ -28,56 +28,56 @@
 int SCALE = 10000;
 
 enum MESSAGE_TYPE : unsigned char{
-    COMMAND = 0x01;
-    CURRENT_STATE = 0x02;
-    SETPOINT = 0x03;
-    MESSAGE_BACK = 0x04;
+    COMMAND = 0x01,
+    CURRENT_STATE = 0x02,
+    SETPOINT = 0x03,
+    MESSAGE_BACK = 0x04
 };
 
 enum BACK_INFO : unsigned char{
-    ONLY_POSITION = 0x05;
-    ONLY_IMU = 0x06;
-    POSITION_AND_IMU = 0x07;
-    DO_NOTHING  = 0x08;
+    ONLY_POSITION = 0x05,
+    ONLY_IMU = 0x06,
+    POSITION_AND_IMU = 0x07,
+    DO_NOTHING  = 0x08
 };
 
 enum CURRENT_STATE:unsigned char{
-    SEND_NED_POSITION = 0x08;
-    SEND_NED_RPY = 0x09;
+    SEND_NED_POSITION = 0x08,
+    SEND_NED_RPY = 0x09
 };
 
 enum MODE:unsigned char{
-    VICON = 0x0A;
-    GPS = 0x0B;
-    CAMERA = 0x0C;
+    VICON = 0x0A,
+    GPS = 0x0B,
+    CAMERA = 0x0C
 };
 
 enum OFFBOARD_COMMAND:unsigned char{
-    DO_NOTHING = 0x01;
-    STAY_IN = 0x02;
-    STAY_OUT = 0x03;
-    TRY_IN = 0x04;
-    TRY_OUT = 0x05;
+    OFF_DO_NOTHING = 0x01,
+    STAY_IN = 0x02,
+    STAY_OUT = 0x03,
+    TRY_IN = 0x04,
+    TRY_OUT = 0x05
 };
 
 enum ARM_COMMAND:unsigned char{
-    DO_NOTHING = 0x01;
-    ARMED = 0x02;
-    DISARMED = 0x03;
+    ARM_DO_NOTHING = 0x01,
+    ARMED = 0x02,
+    DISARMED = 0x03
 };
 
 enum TAKEOFF_COMMAND:unsigned char{
-    DO_NOTHING = 0X01;
-    TAKEOFF = 0x02;
-    LAND = 0x03;
-    EMER_LAN = 0x04;
+    TAKEOFF_DO_NOTHING = 0X01,
+    TAKEOFF = 0x02,
+    LAND = 0x03,
+    EMER_LAN = 0x04
 };
 
 enum SETPOINT_TYPE:unsigned char{
-    LOCAL_POSITION_SP = 0x01;
-    GLOBAL_POSITION_SP = 0x02;
-    ATTITUDE_SP = 0x03;
-    VELOCITY_SP = 0x04;
+    LOCAL_POSITION_SP = 0x01,
+    GLOBAL_POSITION_SP = 0x02,
+    ATTITUDE_SP = 0x03,
+    VELOCITY_SP = 0x04
 };
 
 #endif //PX4_MESSAGE_TYPE_H

@@ -71,6 +71,7 @@
 #include <px4_posix.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_combined.h>
+#include "message_type.h"
 extern "C" __EXPORT int offb_ctrl_main(int argc, char *argv[]);
 
 
@@ -125,7 +126,7 @@ private:
 		(ParamInt<px4::params::OFC_SER_COM>) _param_ofc_ser_com,
 		(ParamInt<px4::params::OFC_SER_BAUD>) _param_ofc_ser_baud,
 		(ParamBool<px4::params::OFC_DEB_PRT>) _param_ofc_deb_prt,
-		(ParamBool<px4::params::OFC_CUR_ID>) _param_ofc_cur_id
+		(ParamInt<px4::params::OFC_CUR_ID>) _param_ofc_cur_id
 	)
 };
 

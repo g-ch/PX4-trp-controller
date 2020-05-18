@@ -32,12 +32,15 @@
 ############################################################################
 
 px4_add_module(
-	MODULE templates__offb_ctrl
+	MODULE usatl_modules__offb_ctrl
+
 	MAIN offb_ctrl
-	STACK_MAIN 3000
+	# MAIN uart_debug_debug
+	STACK 3000
+	COMPILE_FLAGS
 	SRCS
-		offb_ctrl.cpp
+	# uart_debug_debug.c
+	offb_ctrl.cpp
 	DEPENDS
-		modules__uORB
-	)
+)
 
