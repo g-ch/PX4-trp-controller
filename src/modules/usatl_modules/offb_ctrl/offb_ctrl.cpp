@@ -204,17 +204,9 @@ OffboardControl::run()
                 break;
 		    case SETPOINT:
 		        _current_sp_type = parse_msg_type<SETPOINT_TYPE >();
-		        if(_current_sp_type==ATTITUDE_SP){
-                    parse_income_i3data(true);
-                    parse_income_i1data(false);
-		        }else{
-                    parse_income_i3data(true);
-		        }
-		        if(msg_checked()){
-                    //TODO: publish data
-		        }else{
-                    err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
-		        }
+		        process_recv_sp_data();
+
+		        send_back_msg();
                 break;
 		    case MESSAGE_BACK:
                 err(1,"ERROR! Message back type should be uav send to gcs");
@@ -367,6 +359,40 @@ void OffboardControl::process_recv_state_data() {
             memset(&vision_position,0, sizeof(vision_position));
         }
     }
+}
+
+void OffboardControl::process_recv_sp_data() {
+    if(_current_sp_type==ATTITUDE_SP){
+        parse_income_i3data(true);
+        parse_income_i1data(false);
+        if(msg_checked()){
+            //TODO: publish data
+        }else{
+            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+        }
+    }else if(_current_sp_type == VELOCITY_SP){
+        parse_income_i3data(true);
+        if(msg_checked()){
+            //TODO: publish data
+        }else{
+            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+        }
+    }else if(_current_sp_type == LOCAL_POSITION_SP){
+        parse_income_i3data(true);
+        if(msg_checked()){
+            //TODO: publish data
+        }else{
+            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+        }
+    }else if(_current_sp_type == GLOBAL_POSITION_SP){
+        parse_income_i3data(true);
+        if(msg_checked()){
+            //TODO: publish data
+        }else{
+            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+        }
+    }
+
 }
 
 

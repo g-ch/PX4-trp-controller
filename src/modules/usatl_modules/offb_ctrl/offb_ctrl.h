@@ -173,6 +173,7 @@ private:
 	bool msg_checked();
 	void process_command();
 	void send_back_msg();
+	void process_recv_sp_data();
 	void process_recv_state_data();
     void parse_income_i3data(bool clear_sum);
     void parse_income_i1data(bool clear_sum);
