@@ -399,7 +399,8 @@ int intel_t265_sar_thread_main(int argc, char *argv[])
                     // int inst_att = 0;
                     if(_is_t265_data_check_true){
                         // PX4_WARN("published");
-                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &_vision_position_pub, &vision_position, &inst_pos, ORB_PRIO_DEFAULT);
+                        orb_publish_auto(ORB_ID(vehicle_visual_odometry), &
+                        _vision_position_pub, &vision_position, &inst_pos, ORB_PRIO_DEFAULT);
                         // orb_publish_auto(ORB_ID(vehicle_vision_attitude), &_vision_attitude_pub, &vision_attitude, &inst_att, ORB_PRIO_DEFAULT);
                     } else{
                         // PX4_WARN("NOT published");

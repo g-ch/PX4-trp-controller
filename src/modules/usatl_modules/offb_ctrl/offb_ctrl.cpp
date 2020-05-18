@@ -35,12 +35,15 @@
 
 
 
-OffboardControl::OffboardControl():
-    ModuleParams(nullptr){
+OffboardControl::OffboardControl(): ModuleParams(nullptr)
+{
     parameters_updated();
+    _msg_sum_chk = 0x00;
+    memset(&vision_position, 0 , sizeof(vision_position));
 }
 
-int OffboardControl::print_status()
+int
+OffboardControl::print_status()
 {
 	PX4_INFO("Running");
 	// TODO: print additional runtime information about the state of the module
@@ -48,7 +51,8 @@ int OffboardControl::print_status()
 	return 0;
 }
 
-int OffboardControl::custom_command(int argc, char *argv[])
+int
+OffboardControl::custom_command(int argc, char *argv[])
 {
 	return print_usage("unknown command");
 }
@@ -64,7 +68,8 @@ OffboardControl *OffboardControl::instantiate(int argc, char *argv[])
     return instance;
 }
 
-int OffboardControl::task_spawn(int argc, char *argv[])
+int
+OffboardControl::task_spawn(int argc, char *argv[])
 {
     _task_id = px4_task_spawn_cmd("offb_ctrl",
                                   SCHED_DEFAULT,
@@ -81,7 +86,8 @@ int OffboardControl::task_spawn(int argc, char *argv[])
     return 0;
 }
 
-bool OffboardControl::serial_init() {
+bool
+OffboardControl::serial_init() {
     switch (_ser_com_num){
         case 0:
             _serial_fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
@@ -138,52 +144,129 @@ bool OffboardControl::serial_init() {
     return true;
 }
 
-void OffboardControl::run()
-{
-    serial_init();
-	// Example: run the loop synchronized to the sensor_combined topic publication
-	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 
-	px4_pollfd_struct_t fds[1];
-	fds[0].fd = sensor_combined_sub;
-	fds[0].events = POLLIN;
-
-	// initialize parameters
-	parameters_update_poll();
-
-	while (!should_exit()) {
-		// wait for up to 1000ms for data
-		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
-
-		if (pret == 0) {
-			// Timeout: let the loop run anyway, don't do `continue` here
-
-		} else if (pret < 0) {
-			// this is undesirable but not much we can do
-			PX4_ERR("poll error %d, %d", pret, errno);
-			px4_usleep(50000);
-			continue;
-
-		} else if (fds[0].revents & POLLIN) {
-
-			struct sensor_combined_s sensor_combined;
-			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub, &sensor_combined);
-			// TODO: do something with the data...
-		}
-        PX4_INFO("running OK!");
-        parameters_update_poll();
-	}
-
+bool
+OffboardControl::parse_frame_head(uint8_t limit){
+    uint8_t count = 0;
+    while(count++<limit){
+        get_data();
+        if(_cdata_buffer == FRAME_HEAD1)
+        {
+            get_data();
+            if(_cdata_buffer==FRAME_HEAD2) return true;
+        }
+    }
+    return false;
 }
 
-void OffboardControl::parameters_updated() {
+bool
+OffboardControl::msg_checked(){
+    get_data();
+    bool res = (_cdata_buffer==_msg_sum_chk);
+    _msg_sum_chk = 0x00;
+    return res;
+}
+
+
+void
+OffboardControl::run()
+{
+    if(!serial_init()){
+        err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
+    }
+	parameters_update_poll();
+	while (!should_exit()) {
+	    //解析帧头数据
+		if(!parse_frame_head(30)){
+            err(1, "failed to parse offb_ctrl uart check com and baudrate!!");
+		}
+		//得到消息类型
+		_current_msg_type = parse_msg_type<MESSAGE_TYPE>();
+		switch (_current_msg_type){
+            case COMMAND:
+                _current_mode = parse_msg_type<MODE>();
+                _current_offboard_command = parse_msg_type<OFFBOARD_COMMAND>();
+                _current_arm_command = parse_msg_type<ARM_COMMAND>();
+                _current_takeoff_command = parse_msg_type<TAKEOFF_COMMAND >();
+                _current_back_info = parse_msg_type<BACK_INFO >();
+                _msg_sum_chk = _current_mode+_current_offboard_command+_current_arm_command+
+                                _current_takeoff_command+_current_back_info;
+                if(msg_checked()){
+                    process_command();
+                }else{
+                    err(1,"ERROR!! COMMAND MSG CHECK FAILED!!!");
+                }
+                break;
+            case CURRENT_STATE :
+                _current_send_state = parse_msg_type<SEND_CURRENT_STATE >();
+                process_recv_state_data()
+                send_back_msg();
+                break;
+		    case SETPOINT:
+		        _current_sp_type = parse_msg_type<SETPOINT_TYPE >();
+		        if(_current_sp_type==ATTITUDE_SP){
+                    parse_income_i3data(true);
+                    parse_income_i1data(false);
+		        }else{
+                    parse_income_i3data(true);
+		        }
+		        if(msg_checked()){
+                    //TODO: publish data
+		        }else{
+                    err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+		        }
+                break;
+		    case MESSAGE_BACK:
+                err(1,"ERROR! Message back type should be uav send to gcs");
+		        break;
+            default:
+                err(1, "failed to parse offb_ctrl msg type!!");
+                break;
+		}
+		get_data(); //读取包尾
+        parameters_update_poll(); //更新参数
+	}
+}
+
+void
+OffboardControl::parse_income_i3data(bool clear_sum){
+    if(clear_sum)_msg_sum_chk = 0x00;
+    memset(_char_12buffer, 0,sizeof(_char_12buffer))
+    for (int i = 0; i < 12; ++i) {
+        _cdata_buffer = '0';
+        read(_serial_fd,&_cdata_buffer,1);
+        _char_12buffer[i] = _cdata_buffer;
+        _msg_sum_chk+=_char_12buffer[i];
+    }
+    for (int j = 0; j < 3; ++j) {
+        _income_3_idata[j] = (int)(_char_12buffer[4*j]<<24|_char_12buffer[4*i+1]<<16|
+                                    _char_12buffer[4*i+2]<<8|_char_12buffer[4*i+3]);
+    }
+}
+
+void
+OffboardControl::parse_income_i1data(bool clear_sum){
+    if(clear_sum)_msg_sum_chk = 0x00;
+    memset(_char_4buffer, 0,sizeof(_char_4buffer))
+    for (int i = 0; i < 4; ++i) {
+        _cdata_buffer = '0';
+        read(_serial_fd,&_cdata_buffer,1);
+        _char_4buffer[i] = _cdata_buffer;
+        _msg_sum_chk+=_char_4buffer[i];
+    }
+    _income_1_idata = (int)(buffer[0]<<24|buffer[1]<<16|buffer[2]<<8|buffer[3]);
+}
+
+void
+OffboardControl::parameters_updated() {
     _ser_com_num = _param_ofc_ser_com.get();
     _ser_buadrate = _param_ofc_ser_baud.get();
     _print_debug_msg = _param_ofc_deb_prt.get();
     _drone_id = _param_ofc_cur_id.get();
 }
 
-void OffboardControl::parameters_update_poll()
+void
+OffboardControl::parameters_update_poll()
 {
 	parameter_update_s param_upd;
 	if (_params_sub.update(&param_upd)) {
@@ -192,7 +275,8 @@ void OffboardControl::parameters_update_poll()
 	}
 }
 
-int OffboardControl::print_usage(const char *reason)
+int
+OffboardControl::print_usage(const char *reason)
 {
 	if (reason) {
 		PX4_WARN("%s\n", reason);
@@ -223,7 +307,66 @@ $ module start -f -p 42
 	return 0;
 }
 
-int offb_ctrl_main(int argc, char *argv[])
+void
+OffboardControl::process_command() {
+    switch (_current_mode){
+        case GPS:
+            break;
+        case VICON:
+            break;
+        case CAMERA:
+            break;
+    }
+}
+
+void
+OffboardControl::send_back_msg(){
+    if(_current_back_info==DO_NOTHING){
+
+    }
+}
+
+void OffboardControl::process_recv_state_data() {
+    if(_current_send_state==SEND_NED_POSITION_RPY){
+        vision_position.timestamp = hrt_absolute_time();
+        parse_income_i3data(true);
+        vision_position.x = (float)_income_3_idata[0]/SCALE;
+        vision_position.y = (float)_income_3_idata[1]/SCALE;
+        vision_position.z = (float)_income_3_idata[2]/SCALE;
+        parse_income_i3data(false);
+        matrix::Quatf q(matrix::Eulerf(
+                        (float)_income_3_idata[0]/SCALE,
+                        (float)_income_3_idata[1]/SCALE,
+                        (float)_income_3_idata[2]/SCALE));
+        q.copyTo(vision_position.q);
+        if(msg_checked()){
+            orb_publish_auto(ORB_ID(vehicle_visual_odometry),
+                    &_vision_position_pub,
+                    &vision_position, nullptr, ORB_PRIO_DEFAULT);
+        }else{
+            _msg_sum_chk = 0x00;
+            memset(vision_position,0, sizeof(vision_position));
+        }
+    }else if(_current_send_state==SEND_NED_POSITION){
+        vision_position.timestamp = hrt_absolute_time();
+        parse_income_i3data(true);
+        vision_position.x = (float)_income_3_idata[0]/SCALE;
+        vision_position.y = (float)_income_3_idata[1]/SCALE;
+        vision_position.z = (float)_income_3_idata[2]/SCALE;
+        if(msg_checked()){
+            orb_publish_auto(ORB_ID(vehicle_visual_odometry),
+                             &_vision_position_pub,
+                             &vision_position, nullptr, ORB_PRIO_DEFAULT);
+        }else{
+            _msg_sum_chk = 0x00;
+            memset(vision_position,0, sizeof(vision_position));
+        }
+    }
+}
+
+
+int
+offb_ctrl_main(int argc, char *argv[])
 {
 	return OffboardControl::main(argc, argv);
 }
