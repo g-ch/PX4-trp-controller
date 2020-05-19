@@ -492,6 +492,7 @@ add_subdirectory(src/lib EXCLUDE_FROM_ALL)
 add_subdirectory(src/platforms EXCLUDE_FROM_ALL)
 add_subdirectory(src/modules/uORB EXCLUDE_FROM_ALL) # TODO: platform layer
 add_subdirectory(src/modules/usatl_modules EXCLUDE_FROM_ALL) # TODO: platform layer
+add_subdirectory(src/modules/offb_ctrl EXCLUDE_FROM_ALL) # TODO: platform layer
 add_subdirectory(src/drivers/boards EXCLUDE_FROM_ALL)
 
 if(EXISTS "${PX4_BOARD_DIR}/CMakeLists.txt")

@@ -315,11 +315,63 @@ OffboardControl::process_command() {
 void
 OffboardControl::send_back_msg(){
     if(_current_back_info==ONLY_POSITION){
+        _local_position_sub.copy(&_local_position);
         _send_back_flag = true;
+        send_frame_head();
+        _msg_sum_chk = 0x00;
+        send_msg_type(_current_back_info);
+        _income_3_idata[0] = (int)(_local_position.x*SCALE);
+        _income_3_idata[1] = (int)(_local_position.y*SCALE);
+        _income_3_idata[2] = (int)(_local_position.z*SCALE);
+        send_int_data(_income_3_idata[0],1);
+        send_int_data(_income_3_idata[1],0);
+        send_int_data(_income_3_idata[2],0);
+        write(_serial_fd,&_msg_sum_chk,1);
+        _msg_sum_chk = 0x00;
+        send_frame_tail();
     }else if(_current_back_info==ONLY_IMU){
         _send_back_flag = true;
-    }else if(_current_back_info==POSITION_AND_IMU){
+        _local_position_sub.copy(&_local_position);
         _send_back_flag = true;
+        send_frame_head();
+        _msg_sum_chk = 0x00;
+        send_msg_type(_current_back_info);
+        _income_3_idata[0] = (int)(_local_position.ax*SCALE);
+        _income_3_idata[1] = (int)(_local_position.ay*SCALE);
+        _income_3_idata[2] = (int)(_local_position.az*SCALE);
+        send_int_data(_income_3_idata[0],1);
+        send_int_data(_income_3_idata[1],0);
+        send_int_data(_income_3_idata[2],0);
+        write(_serial_fd,&_msg_sum_chk,1);
+        _msg_sum_chk = 0x00;
+        send_frame_tail();
+
+    }else if(_current_back_info==POSITION_AND_IMU){
+
+        _send_back_flag = true;
+        _local_position_sub.copy(&_local_position);
+        _send_back_flag = true;
+        send_frame_head();
+        _msg_sum_chk = 0x00;
+        send_msg_type(_current_back_info);
+        _income_3_idata[0] = (int)(_local_position.x*SCALE);
+        _income_3_idata[1] = (int)(_local_position.y*SCALE);
+        _income_3_idata[2] = (int)(_local_position.z*SCALE);
+        send_int_data(_income_3_idata[0],1);
+        send_int_data(_income_3_idata[1],0);
+        send_int_data(_income_3_idata[2],0);
+        _income_3_idata[0] = (int)(_local_position.ax*SCALE);
+        _income_3_idata[1] = (int)(_local_position.ay*SCALE);
+        _income_3_idata[2] = (int)(_local_position.az*SCALE);
+        send_int_data(_income_3_idata[0],0);
+        send_int_data(_income_3_idata[1],0);
+        send_int_data(_income_3_idata[2],0);
+        write(_serial_fd,&_msg_sum_chk,1);
+        _msg_sum_chk = 0x00;
+        send_frame_tail();
+
+        _send_back_flag = true;
+
     }else if(_current_back_info==DO_NOTHING){
         _send_back_flag = false;
     }
@@ -512,7 +564,8 @@ void OffboardControl::process_recv_sp_data() {
 
 }
 
-void OffboardControl::process_offboard_enable_cmd() {
+void
+OffboardControl::process_offboard_enable_cmd() {
     switch(_current_offboard_command){
         //TODO: 处理offboard代码
         case TRY_OUT:
@@ -526,6 +579,30 @@ void OffboardControl::process_offboard_enable_cmd() {
         case OFF_DO_NOTHING:
             break;
     }
+}
+
+void
+OffboardControl::send_int_data(int a,bool clear){
+    if(clear) _msg_sum_chk = 0x00;
+    _char_4buffer[0] = BYTE3(a);_msg_sum_chk+=_char_4buffer[0];
+    _char_4buffer[1] = BYTE2(a);_msg_sum_chk+=_char_4buffer[1];
+    _char_4buffer[2] = BYTE1(a);_msg_sum_chk+=_char_4buffer[2];
+    _char_4buffer[3] = BYTE0(a);_msg_sum_chk+=_char_4buffer[3];
+    write(_serial_fd,_char_4buffer,4);
+}
+
+void
+OffboardControl::send_frame_head() {
+    _cdata_buffer = 0xfe;
+    write(_serial_fd,&_cdata_buffer,1);
+    _cdata_buffer = 0x22;
+    write(_serial_fd,&_cdata_buffer,1);
+}
+
+void
+OffboardControl::send_frame_tail() {
+    _cdata_buffer = 0xee;
+    write(_serial_fd,&_cdata_buffer,1);
 }
 
 

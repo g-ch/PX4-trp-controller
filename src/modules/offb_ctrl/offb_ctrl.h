@@ -81,7 +81,10 @@
 #include <uORB/topics/offboard_control_mode.h>
 #include "message_type.h"
 extern "C" __EXPORT int offb_ctrl_main(int argc, char *argv[]);
-
+#define  BYTE0(dwTemp)       ( *( (uint8_t *)(&dwTemp)	)  )
+#define  BYTE1(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 1) )
+#define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
+#define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
 class OffboardControl : public ModuleBase<OffboardControl>, public ModuleParams
 {
 public:
@@ -110,8 +113,7 @@ public:
 private:
 
 	uORB::Subscription          _params_sub{ORB_ID(parameter_update)};			        /**< parameter updates subscription */
-	uORB::Subscription          _local_position_sub{ORB_ID(vehicle_odometry)};			/**< local_position updates subscription */
-	uORB::Subscription          _global_position_sub{ORB_ID(parameter_update)};			/**< global_position updates subscription */
+	uORB::Subscription          _local_position_sub{ORB_ID(vehicle_local_position)};			/**< local_position updates subscription */
     uORB::Subscription          _control_mod_sub{ORB_ID(vehicle_control_mode)};
 
 
@@ -145,11 +147,7 @@ private:
     u_char                      _cdata_buffer{'0'};
     char                        _msg_sum_chk{};
     bool                        _print_debug_msg{true};
-    bool                        _control_mode_updated{false};
     bool                        _send_back_flag{false};
-
-    matrix::Vector3f            _body_local_position;    //无人机内部
-    matrix::Vector3f            _local_position_sp;
 
     float                       _throttle_sp;
     float                       _income_3_fdata[3];
@@ -187,6 +185,12 @@ private:
         return (T)_cdata_buffer;
     }
 
+    template <typename T>
+    void send_msg_type(T a){
+	    _cdata_buffer = a;
+	    write(_serial_fd,&_cdata_buffer,1);
+	}
+
     bool parse_frame_head(uint8_t limit=30);
 	bool msg_checked();
 	void process_command();
@@ -194,6 +198,9 @@ private:
 	void process_recv_sp_data();
 	void process_recv_state_data();
 	void process_offboard_enable_cmd();
+	void send_frame_tail();
+    void send_int_data(int a,bool clear);
+	void send_frame_head();
     void parse_income_i3data(bool clear_sum);
     void parse_income_i1data(bool clear_sum);
 
