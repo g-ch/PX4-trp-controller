@@ -1,6 +1,7 @@
 全局坐标系使用NED FRD 使用
 INT传递数据 可以设置SCALE
 
+[这篇文章讲的很好](http://www.jeepxie.net/article/407925.html)
 
 使用自带数学库的方法:
 
