@@ -127,13 +127,10 @@ OffboardControl::serial_init() {
     int termios_state;
     tcgetattr(_serial_fd, &uart_config);
     uart_config.c_oflag &= ~ONLCR;
-    uart_config.c_cflag &= ~(CSTOPB | PARENB);
+    uart_config.c_cflag &= ~(CSTOPB|PARENB);
+    uart_config.c_cflag &= ~CRTSCTS;
     if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
         PX4_INFO("ERR: %d (cfsetispeed)\n", termios_state);
-        return false;
-    }
-    if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-        PX4_INFO("ERR: %d (cfsetospeed)\n", termios_state);
         return false;
     }
     if ((termios_state = tcsetattr(_serial_fd, TCSANOW, &uart_config)) < 0) {
@@ -147,6 +144,7 @@ OffboardControl::serial_init() {
 
 bool
 OffboardControl::parse_frame_head(uint8_t limit){
+    _msg_sum_chk = 0x00;
     uint8_t count = 0;
     while(count++<limit){
         get_data();
@@ -167,7 +165,6 @@ OffboardControl::msg_checked(){
     return res;
 }
 
-
 void
 OffboardControl::run()
 {
@@ -176,9 +173,19 @@ OffboardControl::run()
     }
 	parameters_update_poll();
 	while (!should_exit()) {
-	    //解析帧头数据
+	    // _current_back_info = POSITION_AND_IMU;
+        // send_back_msg();
+
+        //解析帧头数据
 		if(!parse_frame_head(30)){
             err(1, "failed to parse offb_ctrl uart check com and baudrate!!");
+            continue;
+		}else{
+
+            if(_print_debug_msg){
+                PX4_INFO("HEAD OK");
+            }
+
 		}
 		//得到消息类型
 		_current_msg_type = parse_msg_type<MESSAGE_TYPE>();
@@ -189,23 +196,29 @@ OffboardControl::run()
                 _current_arm_command = parse_msg_type<ARM_COMMAND>();
                 _current_takeoff_command = parse_msg_type<TAKEOFF_COMMAND >();
                 _current_back_info = parse_msg_type<BACK_INFO >();
-                _msg_sum_chk = _current_mode+_current_offboard_command+_current_arm_command+
+
+                _msg_sum_chk = _current_msg_type+_current_mode+_current_offboard_command+_current_arm_command+
                                 _current_takeoff_command+_current_back_info;
                 if(msg_checked()){
+                    if(_print_debug_msg){
+                        PX4_INFO("COMMAND CHECKED OK");
+                    }
                     process_command();
                 }else{
                     err(1,"ERROR!! COMMAND MSG CHECK FAILED!!!");
                 }
+                get_data(); //读取包尾
                 break;
             case CURRENT_STATE :
                 _current_send_state = parse_msg_type<SEND_CURRENT_STATE >();
                 process_recv_state_data();
+                get_data(); //读取包尾
                 send_back_msg();
                 break;
 		    case SETPOINT:
 		        _current_sp_type = parse_msg_type<SETPOINT_TYPE >();
 		        process_recv_sp_data();
-
+                get_data(); //读取包尾
 		        send_back_msg();
                 break;
 		    case MESSAGE_BACK:
@@ -215,7 +228,6 @@ OffboardControl::run()
                 err(1, "failed to parse offb_ctrl msg type!!");
                 break;
 		}
-		get_data(); //读取包尾
         parameters_update_poll(); //更新参数
 	}
 }
@@ -231,8 +243,8 @@ OffboardControl::parse_income_i3data(bool clear_sum){
         _msg_sum_chk+=_char_12buffer[i];
     }
     for (int j = 0; j < 3; ++j) {
-        _income_3_idata[j] = (int)(_char_12buffer[4*j]<<24|_char_12buffer[4*j+1]<<16|
-                                    _char_12buffer[4*j+2]<<8|_char_12buffer[4*j+3]);
+        _income_3_idata[j] = (int)(_char_12buffer[4*j+3]<<24|_char_12buffer[4*j+2]<<16|
+                                    _char_12buffer[4*j+1]<<8|_char_12buffer[4*j]);
         _income_3_fdata[j] = _income_3_idata[j];
     }
 }
@@ -247,7 +259,7 @@ OffboardControl::parse_income_i1data(bool clear_sum){
         _char_4buffer[i] = _cdata_buffer;
         _msg_sum_chk+=_char_4buffer[i];
     }
-    _income_1_idata = (int)(_char_4buffer[0]<<24|_char_4buffer[1]<<16|_char_4buffer[2]<<8|_char_4buffer[3]);
+    _income_1_idata = (int)(_char_4buffer[3]<<24|_char_4buffer[2]<<16|_char_4buffer[1]<<8|_char_4buffer[0]);
 }
 
 void
@@ -314,11 +326,14 @@ OffboardControl::process_command() {
 
 void
 OffboardControl::send_back_msg(){
+    _current_msg_type = MESSAGE_BACK;
     if(_current_back_info==ONLY_POSITION){
         _local_position_sub.copy(&_local_position);
         _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
+        send_msg_type(_current_msg_type);
+
         send_msg_type(_current_back_info);
         _income_3_idata[0] = (int)(_local_position.x*SCALE);
         _income_3_idata[1] = (int)(_local_position.y*SCALE);
@@ -335,6 +350,7 @@ OffboardControl::send_back_msg(){
         _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
+        send_msg_type(_current_msg_type);
         send_msg_type(_current_back_info);
         _income_3_idata[0] = (int)(_local_position.ax*SCALE);
         _income_3_idata[1] = (int)(_local_position.ay*SCALE);
@@ -353,6 +369,7 @@ OffboardControl::send_back_msg(){
         _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
+        send_msg_type(_current_msg_type);
         send_msg_type(_current_back_info);
         _income_3_idata[0] = (int)(_local_position.x*SCALE);
         _income_3_idata[1] = (int)(_local_position.y*SCALE);
@@ -360,6 +377,12 @@ OffboardControl::send_back_msg(){
         send_int_data(_income_3_idata[0],1);
         send_int_data(_income_3_idata[1],0);
         send_int_data(_income_3_idata[2],0);
+        // send_int_data(100,1);
+        // send_int_data(2000,0);
+        // send_int_data(30000,0);
+        // send_int_data(4000,0);
+        // send_int_data(500,0);
+        // send_int_data(60,0);
         _income_3_idata[0] = (int)(_local_position.ax*SCALE);
         _income_3_idata[1] = (int)(_local_position.ay*SCALE);
         _income_3_idata[2] = (int)(_local_position.az*SCALE);
@@ -393,6 +416,12 @@ void OffboardControl::process_recv_state_data() {
         matrix::Quatf q(matrix::Eulerf(rpy[0], rpy[1], rpy[2]));
         q.copyTo(_vision_position.q);
         if(msg_checked()){
+            if(_print_debug_msg){
+                PX4_INFO("XYZRPY: %2.4f, %2.4f, %2.4f, %2.4f, %2.4f, %2.4f",
+                        (double)_vision_position.x,(double)_vision_position.y,(double)_vision_position.z,
+                         (double)rpy[0],(double)rpy[1],(double)rpy[2]
+                );
+            }
             orb_publish_auto(ORB_ID(vehicle_visual_odometry),
                     &_vision_position_pub,
                     &_vision_position, nullptr, ORB_PRIO_DEFAULT);

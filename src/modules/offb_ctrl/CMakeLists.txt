@@ -36,7 +36,7 @@ px4_add_module(
 
 	MAIN offb_ctrl
 	# MAIN uart_debug_debug
-	STACK 3000
+	STACK 5000
 	COMPILE_FLAGS
 	SRCS
 	# uart_debug_debug.c

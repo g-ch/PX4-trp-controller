@@ -137,7 +137,7 @@ private:
     hrt_abstime                 _time_now{0};
     hrt_abstime                 _time_last{0};
     int                         _ser_buadrate{57600};
-    int                         _ser_com_num{0};
+    int                         _ser_com_num{1};
     int                         _drone_id{0};
     int                         _serial_fd{-1};      //串口fd
     int                         _income_3_idata[3];  //外界输入
@@ -145,8 +145,8 @@ private:
     u_char                      FRAME_HEAD1 {0xfe};
     u_char                      FRAME_HEAD2 {0x22};
     u_char                      _cdata_buffer{'0'};
-    char                        _msg_sum_chk{};
-    bool                        _print_debug_msg{true};
+    u_char                      _msg_sum_chk{};
+    bool                        _print_debug_msg{1};
     bool                        _send_back_flag{false};
 
     float                       _throttle_sp;
