@@ -63,6 +63,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/position_setpoint.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
@@ -80,11 +81,14 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include "message_type.h"
+#define  DPX4_INFO(a,FMT, ...) if(a)__px4_log_modulename(_PX4_LOG_LEVEL_INFO, FMT, ##__VA_ARGS__)
+
 extern "C" __EXPORT int offb_ctrl_main(int argc, char *argv[]);
 #define  BYTE0(dwTemp)       ( *( (uint8_t *)(&dwTemp)	)  )
 #define  BYTE1(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 1) )
 #define  BYTE2(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 2) )
 #define  BYTE3(dwTemp)       ( *( (uint8_t *)(&dwTemp) + 3) )
+
 class OffboardControl : public ModuleBase<OffboardControl>, public ModuleParams
 {
 public:
@@ -115,6 +119,8 @@ private:
 	uORB::Subscription          _params_sub{ORB_ID(parameter_update)};			        /**< parameter updates subscription */
 	uORB::Subscription          _local_position_sub{ORB_ID(vehicle_local_position)};			/**< local_position updates subscription */
     uORB::Subscription          _control_mod_sub{ORB_ID(vehicle_control_mode)};
+    uORB::Subscription          _cmd_ack_sub{ORB_ID(vehicle_command_ack)};
+    uORB::Subscription          _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 
 	orb_advert_t                 _vision_position_pub{nullptr};
@@ -130,12 +136,10 @@ private:
     offboard_control_mode_s      _offboard_control_mode{};
     vehicle_status_s             _vehicle_status{};
     vehicle_command_s            _vcmd{};
+    vehicle_command_ack_s        _vcmd_ack{};
     position_setpoint_triplet_s  _pos_sp_triplet{};
 
 
-    hrt_abstime                 _task_start{hrt_absolute_time()};
-    hrt_abstime                 _time_now{0};
-    hrt_abstime                 _time_last{0};
     int                         _ser_buadrate{57600};
     int                         _ser_com_num{1};
     int                         _drone_id{0};
@@ -147,11 +151,10 @@ private:
     u_char                      _cdata_buffer{'0'};
     u_char                      _msg_sum_chk{};
     bool                        _print_debug_msg{1};
-    bool                        _send_back_flag{false};
+    bool                        _already_try_in{false};
+    bool                        _already_try_out{false};
 
-    float                       _throttle_sp;
     float                       _income_3_fdata[3];
-    matrix::Vector3f            _current_imu;
     u_char                      _char_12buffer[12]; //for income 3int data
     u_char                      _char_4buffer[4]; //for income 1int data
 

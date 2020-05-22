@@ -33,8 +33,6 @@
 
 #include "offb_ctrl.h"
 
-
-
 OffboardControl::OffboardControl(): ModuleParams(nullptr)
 {
     parameters_updated();
@@ -173,9 +171,9 @@ OffboardControl::run()
     }
 	parameters_update_poll();
 	while (!should_exit()) {
-	    // _current_back_info = POSITION_AND_IMU;
-        // send_back_msg();
-
+	    if(_print_debug_msg){
+	        PX4_INFO("UAV ID:%d",_drone_id);
+	    }
         //解析帧头数据
 		if(!parse_frame_head(30)){
             err(1, "failed to parse offb_ctrl uart check com and baudrate!!");
@@ -329,7 +327,6 @@ OffboardControl::send_back_msg(){
     _current_msg_type = MESSAGE_BACK;
     if(_current_back_info==ONLY_POSITION){
         _local_position_sub.copy(&_local_position);
-        _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
         send_msg_type(_current_msg_type);
@@ -345,9 +342,7 @@ OffboardControl::send_back_msg(){
         _msg_sum_chk = 0x00;
         send_frame_tail();
     }else if(_current_back_info==ONLY_IMU){
-        _send_back_flag = true;
         _local_position_sub.copy(&_local_position);
-        _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
         send_msg_type(_current_msg_type);
@@ -363,10 +358,7 @@ OffboardControl::send_back_msg(){
         send_frame_tail();
 
     }else if(_current_back_info==POSITION_AND_IMU){
-
-        _send_back_flag = true;
         _local_position_sub.copy(&_local_position);
-        _send_back_flag = true;
         send_frame_head();
         _msg_sum_chk = 0x00;
         send_msg_type(_current_msg_type);
@@ -392,11 +384,7 @@ OffboardControl::send_back_msg(){
         write(_serial_fd,&_msg_sum_chk,1);
         _msg_sum_chk = 0x00;
         send_frame_tail();
-
-        _send_back_flag = true;
-
     }else if(_current_back_info==DO_NOTHING){
-        _send_back_flag = false;
     }
 }
 
@@ -448,6 +436,7 @@ void OffboardControl::process_recv_state_data() {
 }
 
 void OffboardControl::process_recv_sp_data() {
+    _offboard_control_mode.timestamp = hrt_absolute_time();
     if(_current_sp_type==ATTITUDE_SP){
         parse_income_i3data(true);
         parse_income_i1data(false);
@@ -462,9 +451,9 @@ void OffboardControl::process_recv_sp_data() {
             _offboard_control_mode.ignore_bodyrate_y = 1;
             _offboard_control_mode.ignore_bodyrate_z = 1;
             _offboard_control_mode.timestamp = hrt_absolute_time();
-            orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &_offboard_control_mode);
+            orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                    &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
-            _throttle_sp = (float)_income_1_idata/SCALE;
             if(_control_mode.flag_control_offboard_enabled){
                 if(!_offboard_control_mode.ignore_attitude){
                     _att_sp.timestamp = hrt_absolute_time();
@@ -472,11 +461,13 @@ void OffboardControl::process_recv_sp_data() {
                     matrix::Quatf sp_q(sp_euler);
                     sp_q.copyTo(_att_sp.q_d);
                     _att_sp.q_d_valid = true;
+                    //发布姿态控制量
                     _att_sp.roll_body = _income_3_fdata[0];
                     _att_sp.pitch_body = _income_3_fdata[1];
                     _att_sp.yaw_body = _income_3_fdata[2];
                     _att_sp.yaw_sp_move_rate = 0.0f;
                     if (!_offboard_control_mode.ignore_thrust) {
+                        //发布油门控制量
                         // att_sp.thrust_body[0]用于 固定翼
                         _att_sp.thrust_body[2] = (float)_income_1_idata/SCALE; //
                     }
@@ -501,7 +492,8 @@ void OffboardControl::process_recv_sp_data() {
             _offboard_control_mode.ignore_bodyrate_z = 1;
             _offboard_control_mode.ignore_attitude = 1;
             _offboard_control_mode.timestamp = hrt_absolute_time();
-            orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &_offboard_control_mode);
+            orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                             &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
                 if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
@@ -548,7 +540,8 @@ void OffboardControl::process_recv_sp_data() {
             _offboard_control_mode.ignore_bodyrate_z = 1;
             _offboard_control_mode.ignore_attitude = 1;
             _offboard_control_mode.timestamp = hrt_absolute_time();
-            orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &_offboard_control_mode);
+            orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                             &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
                 if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
@@ -595,15 +588,49 @@ void OffboardControl::process_recv_sp_data() {
 
 void
 OffboardControl::process_offboard_enable_cmd() {
+    _vehicle_status_sub.copy(&_vehicle_status);
+    _vcmd.timestamp = hrt_absolute_time();
+    _vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+    _vcmd.target_component = _vehicle_status.component_id;
+    _vcmd.target_system = _vehicle_status.system_id;
     switch(_current_offboard_command){
         //TODO: 处理offboard代码
         case TRY_OUT:
+            if(!_already_try_out){
+                _already_try_out = false;
+                orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                                 &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
+                orb_publish_auto(ORB_ID(vehicle_command),
+                                 &_cmd_pub,
+                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            }
             break;
         case TRY_IN:
+            if(!_already_try_in){
+                _already_try_in = true;
+                orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                                 &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
+                orb_publish_auto(ORB_ID(vehicle_command),
+                                 &_cmd_pub,
+                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            }
             break;
         case STAY_IN:
+            orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
+                             &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
+            orb_publish_auto(ORB_ID(vehicle_command),
+                             &_cmd_pub,
+                             &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            _cmd_ack_sub.copy(&_vcmd_ack);
+            if(_vcmd_ack.result==0){
+                DPX4_INFO(_print_debug_msg,"Successful Stay in Offboard");
+            }
             break;
         case STAY_OUT:
+            orb_publish_auto(ORB_ID(vehicle_command),
+                             &_cmd_pub,
+                             &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            _cmd_ack_sub.copy(&_vcmd_ack);
             break;
         case OFF_DO_NOTHING:
             break;
