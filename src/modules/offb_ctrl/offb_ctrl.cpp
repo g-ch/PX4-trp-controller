@@ -320,6 +320,7 @@ OffboardControl::process_command() {
         case CAMERA:
             break;
     }
+
 }
 
 void
@@ -590,12 +591,16 @@ void
 OffboardControl::process_offboard_enable_cmd() {
     _vehicle_status_sub.copy(&_vehicle_status);
     _vcmd.timestamp = hrt_absolute_time();
-    _vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+    _vcmd.command = vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE;
     _vcmd.target_component = _vehicle_status.component_id;
     _vcmd.target_system = _vehicle_status.system_id;
+    _vcmd.source_system = _vehicle_status.system_id;
+    _vcmd.source_component = _vehicle_status.component_id;
     switch(_current_offboard_command){
         //TODO: 处理offboard代码
         case TRY_OUT:
+            _vcmd.param6 = 0.0;
+            _vcmd.confirmation = 1;
             if(!_already_try_out){
                 _already_try_out = false;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
@@ -606,6 +611,8 @@ OffboardControl::process_offboard_enable_cmd() {
             }
             break;
         case TRY_IN:
+            _vcmd.param6 = 1.0;
+            _vcmd.confirmation = 1;
             if(!_already_try_in){
                 _already_try_in = true;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
@@ -616,6 +623,8 @@ OffboardControl::process_offboard_enable_cmd() {
             }
             break;
         case STAY_IN:
+            _vcmd.param6 = 1.0;
+            _vcmd.confirmation = 1;
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             orb_publish_auto(ORB_ID(vehicle_command),
@@ -627,6 +636,8 @@ OffboardControl::process_offboard_enable_cmd() {
             }
             break;
         case STAY_OUT:
+            _vcmd.param6 = 0.0;
+            _vcmd.confirmation = 1;
             orb_publish_auto(ORB_ID(vehicle_command),
                              &_cmd_pub,
                              &_vcmd, nullptr, ORB_PRIO_DEFAULT);

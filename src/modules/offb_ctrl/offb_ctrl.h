@@ -100,6 +100,7 @@ public:
 	static int task_spawn(int argc, char *argv[]);
 
 	static OffboardControl *instantiate(int argc, char *argv[]);
+
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
 
@@ -194,17 +195,29 @@ private:
 	    write(_serial_fd,&_cdata_buffer,1);
 	}
 
+	//解析帧头数据
     bool parse_frame_head(uint8_t limit=30);
+	//check sum
 	bool msg_checked();
+	//执行command 对应命令
 	void process_command();
+	//回传消息
 	void send_back_msg();
+	//处理接收到的sp数据
 	void process_recv_sp_data();
+	//处理接受的状态数据
 	void process_recv_state_data();
+	//处理offboard command 数据
 	void process_offboard_enable_cmd();
+	//发送帧尾数据
 	void send_frame_tail();
-    void send_int_data(int a,bool clear);
+	//对单个int 数据发送 clear 清除 chk
+	void send_int_data(int a,bool clear);
+    //发送帧头
 	void send_frame_head();
+	//解析3个int数据 到 数组中
     void parse_income_i3data(bool clear_sum);
+    //解析一个int数据
     void parse_income_i1data(bool clear_sum);
 
 
