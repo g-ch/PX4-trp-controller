@@ -81,7 +81,12 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include "message_type.h"
-#define  DPX4_INFO(a,FMT, ...) if(a)__px4_log_modulename(_PX4_LOG_LEVEL_INFO, FMT, ##__VA_ARGS__)
+#include <pthread.h>
+
+#define  DPX4_INFO(FMT, ...) if(_print_debug_msg)__px4_log_modulename(_PX4_LOG_LEVEL_INFO, FMT, ##__VA_ARGS__)
+#define  mavlink_debug_info( _text, ...)	if(_mavlink_debug_msg)\
+                        mavlink_vasprintf(_MSG_PRIO_INFO, &_mavlink_offb_ctrl_debug_msg_print, _text, ##__VA_ARGS__)
+
 
 extern "C" __EXPORT int offb_ctrl_main(int argc, char *argv[]);
 #define  BYTE0(dwTemp)       ( *( (uint8_t *)(&dwTemp)	)  )
@@ -129,6 +134,7 @@ private:
 	orb_advert_t                 _offboard_control_mode_pub{nullptr};
 	orb_advert_t 	             _cmd_pub{nullptr};
 	orb_advert_t 		         _pos_sp_triplet_pub{nullptr};
+	orb_advert_t                 _mavlink_offb_ctrl_debug_msg_print{nullptr};
 
     vehicle_odometry_s           _vision_position{};
     vehicle_local_position_s     _local_position{};
@@ -152,6 +158,7 @@ private:
     u_char                      _cdata_buffer{'0'};
     u_char                      _msg_sum_chk{};
     bool                        _print_debug_msg{1};
+    bool                        _mavlink_debug_msg{1};
     bool                        _already_try_in{false};
     bool                        _already_try_out{false};
 

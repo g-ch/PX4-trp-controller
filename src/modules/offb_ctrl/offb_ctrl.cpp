@@ -76,6 +76,7 @@ OffboardControl::task_spawn(int argc, char *argv[])
                                   (px4_main_t)&run_trampoline,
                                   (char *const *)argv);
 
+
     if (_task_id < 0) {
         _task_id = -1;
         return -errno;
@@ -139,7 +140,6 @@ OffboardControl::serial_init() {
     return true;
 }
 
-
 bool
 OffboardControl::parse_frame_head(uint8_t limit){
     _msg_sum_chk = 0x00;
@@ -167,23 +167,25 @@ void
 OffboardControl::run()
 {
     if(!serial_init()){
+        mavlink_debug_info("offb_ctrl /dev/ttyS%d  init failed",_ser_com_num);
         err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
+
     }
+    mavlink_debug_info("offb_ctrl /dev/ttyS%d serial init",_ser_com_num);
 	parameters_update_poll();
+	DPX4_INFO("UAV ID:%d",_drone_id);
+    mavlink_debug_info("UAV ID:%d",_drone_id);
+
+
+
 	while (!should_exit()) {
-	    if(_print_debug_msg){
-	        PX4_INFO("UAV ID:%d",_drone_id);
-	    }
         //解析帧头数据
 		if(!parse_frame_head(30)){
-            err(1, "failed to parse offb_ctrl uart check com and baudrate!!");
+            DPX4_INFO( "failed to parse offb_ctrl uart check com and baudrate!!");
+            mavlink_debug_info("failed to parse frame head 30 times");
             continue;
 		}else{
-
-            if(_print_debug_msg){
-                PX4_INFO("HEAD OK");
-            }
-
+            DPX4_INFO("HEAD OK");
 		}
 		//得到消息类型
 		_current_msg_type = parse_msg_type<MESSAGE_TYPE>();
@@ -203,7 +205,7 @@ OffboardControl::run()
                     }
                     process_command();
                 }else{
-                    err(1,"ERROR!! COMMAND MSG CHECK FAILED!!!");
+                    DPX4_INFO("ERROR!! COMMAND MSG CHECK FAILED!!!");
                 }
                 get_data(); //读取包尾
                 break;
@@ -320,6 +322,47 @@ OffboardControl::process_command() {
         case CAMERA:
             break;
     }
+    // mavlink_debug_info("ready process arm cmd");
+    switch (_current_arm_command){
+        case ARM_DO_NOTHING:
+            break;
+        case ARMED:
+            _vehicle_status_sub.copy(&_vehicle_status);
+            _vcmd.timestamp = hrt_absolute_time();
+            _vcmd.command = vehicle_command_s::VEHICLE_CMD_COMPONENT_ARM_DISARM;
+            _vcmd.target_component = _vehicle_status.component_id;
+            _vcmd.target_system = _vehicle_status.system_id;
+            _vcmd.source_system = _vehicle_status.system_id;
+            _vcmd.source_component = _vehicle_status.component_id;
+            _vcmd.confirmation = 1;
+            _vcmd.param1 = 1.0f;//解锁
+            if(_vehicle_status.arming_state!= vehicle_status_s:: ARMING_STATE_ARMED){
+                mavlink_debug_info("Not armed publish arm cmd...arming..");
+                orb_publish_auto(ORB_ID(vehicle_command),
+                                 &_cmd_pub,
+                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            }
+            break;
+        case DISARMED:
+            _vehicle_status_sub.copy(&_vehicle_status);
+            _vcmd.timestamp = hrt_absolute_time();
+            _vcmd.command = vehicle_command_s::VEHICLE_CMD_COMPONENT_ARM_DISARM;
+            _vcmd.target_component = _vehicle_status.component_id;
+            _vcmd.target_system = _vehicle_status.system_id;
+            _vcmd.source_system = _vehicle_status.system_id;
+            _vcmd.source_component = _vehicle_status.component_id;
+            _vcmd.confirmation = 1;
+            _vcmd.param2 = 0.0f;//上锁
+            if(_vehicle_status.arming_state==vehicle_status_s::ARMING_STATE_ARMED){
+                mavlink_debug_info("Armed publish Disarm cmd... Disarming ");
+                orb_publish_auto(ORB_ID(vehicle_command),
+                                 &_cmd_pub,
+                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            }
+
+
+            break;
+    }
 
 }
 
@@ -370,12 +413,6 @@ OffboardControl::send_back_msg(){
         send_int_data(_income_3_idata[0],1);
         send_int_data(_income_3_idata[1],0);
         send_int_data(_income_3_idata[2],0);
-        // send_int_data(100,1);
-        // send_int_data(2000,0);
-        // send_int_data(30000,0);
-        // send_int_data(4000,0);
-        // send_int_data(500,0);
-        // send_int_data(60,0);
         _income_3_idata[0] = (int)(_local_position.ax*SCALE);
         _income_3_idata[1] = (int)(_local_position.ay*SCALE);
         _income_3_idata[2] = (int)(_local_position.az*SCALE);
@@ -389,7 +426,8 @@ OffboardControl::send_back_msg(){
     }
 }
 
-void OffboardControl::process_recv_state_data() {
+void
+OffboardControl::process_recv_state_data() {
     //发布position
     if(_current_send_state==SEND_NED_POSITION_RPY){
         _vision_position.timestamp = hrt_absolute_time();
@@ -436,7 +474,8 @@ void OffboardControl::process_recv_state_data() {
     }
 }
 
-void OffboardControl::process_recv_sp_data() {
+void
+OffboardControl::process_recv_sp_data() {
     _offboard_control_mode.timestamp = hrt_absolute_time();
     if(_current_sp_type==ATTITUDE_SP){
         parse_income_i3data(true);
@@ -456,6 +495,7 @@ void OffboardControl::process_recv_sp_data() {
                     &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
+                mavlink_debug_info("offboard enable publish att sp");
                 if(!_offboard_control_mode.ignore_attitude){
                     _att_sp.timestamp = hrt_absolute_time();
                     matrix::Eulerf sp_euler(_income_3_fdata[0],_income_3_fdata[1],_income_3_fdata[2]);
@@ -468,9 +508,7 @@ void OffboardControl::process_recv_sp_data() {
                     _att_sp.yaw_body = _income_3_fdata[2];
                     _att_sp.yaw_sp_move_rate = 0.0f;
                     if (!_offboard_control_mode.ignore_thrust) {
-                        //发布油门控制量
-                        // att_sp.thrust_body[0]用于 固定翼
-                        _att_sp.thrust_body[2] = (float)_income_1_idata/SCALE; //
+                        _att_sp.thrust_body[2] = -(float)_income_1_idata/SCALE;
                     }
                 }
             }
@@ -478,7 +516,7 @@ void OffboardControl::process_recv_sp_data() {
                              &_att_sp_pub,
                              &_att_sp, nullptr, ORB_PRIO_DEFAULT);
         }else{
-            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+            DPX4_INFO("ERROR!! STATE MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == VELOCITY_SP){
         parse_income_i3data(true);
@@ -579,9 +617,9 @@ void OffboardControl::process_recv_sp_data() {
     }else if(_current_sp_type == GLOBAL_POSITION_SP){
         parse_income_i3data(true);
         if(msg_checked()){
-            err(1,"ERROR!! DONT USE POSTION SP!!!");
+            mavlink_debug_info("error recv global position sp");
         }else{
-            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+            mavlink_debug_info("error parse  global position sp");
         }
     }
 
@@ -589,6 +627,7 @@ void OffboardControl::process_recv_sp_data() {
 
 void
 OffboardControl::process_offboard_enable_cmd() {
+    // mavlink_debug_info("ready process offboard cmd");
     _vehicle_status_sub.copy(&_vehicle_status);
     _vcmd.timestamp = hrt_absolute_time();
     _vcmd.command = vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE;
@@ -599,8 +638,10 @@ OffboardControl::process_offboard_enable_cmd() {
     switch(_current_offboard_command){
         //TODO: 处理offboard代码
         case TRY_OUT:
-            _vcmd.param6 = 0.0;
+            _vcmd.param1 = 0.0;
             _vcmd.confirmation = 1;
+            _vcmd.from_external = 1;
+
             if(!_already_try_out){
                 _already_try_out = false;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
@@ -608,11 +649,15 @@ OffboardControl::process_offboard_enable_cmd() {
                 orb_publish_auto(ORB_ID(vehicle_command),
                                  &_cmd_pub,
                                  &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+                mavlink_debug_info("try out offboard cmd published");
+
             }
             break;
         case TRY_IN:
-            _vcmd.param6 = 1.0;
+            _vcmd.param1 = 1.0;
             _vcmd.confirmation = 1;
+            _vcmd.from_external = 1;
+
             if(!_already_try_in){
                 _already_try_in = true;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
@@ -620,28 +665,37 @@ OffboardControl::process_offboard_enable_cmd() {
                 orb_publish_auto(ORB_ID(vehicle_command),
                                  &_cmd_pub,
                                  &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+                mavlink_debug_info("try in offboard cmd published");
             }
             break;
         case STAY_IN:
-            _vcmd.param6 = 1.0;
+            _vcmd.param1 = 1.0;
             _vcmd.confirmation = 1;
+            _vcmd.from_external = 1;
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
-            orb_publish_auto(ORB_ID(vehicle_command),
-                             &_cmd_pub,
-                             &_vcmd, nullptr, ORB_PRIO_DEFAULT);
-            _cmd_ack_sub.copy(&_vcmd_ack);
-            if(_vcmd_ack.result==0){
-                DPX4_INFO(_print_debug_msg,"Successful Stay in Offboard");
+            if(_vehicle_status.nav_state!=vehicle_status_s::NAVIGATION_STATE_OFFBOARD){
+                orb_publish_auto(ORB_ID(vehicle_command),
+                                 &_cmd_pub,
+                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+                _cmd_ack_sub.copy(&_vcmd_ack);
+                mavlink_debug_info("not in offboard stay in offboard cmd published");
+                if(_vcmd_ack.result==0){
+                    mavlink_debug_info("Successful Stay in Offboard");
+                }
             }
+
             break;
         case STAY_OUT:
-            _vcmd.param6 = 0.0;
+            _vcmd.param1 = 0.0;
             _vcmd.confirmation = 1;
+            _vcmd.from_external = 1;
+
             orb_publish_auto(ORB_ID(vehicle_command),
                              &_cmd_pub,
                              &_vcmd, nullptr, ORB_PRIO_DEFAULT);
             _cmd_ack_sub.copy(&_vcmd_ack);
+            mavlink_debug_info("stay out offboard cmd published");
             break;
         case OFF_DO_NOTHING:
             break;
@@ -671,7 +725,6 @@ OffboardControl::send_frame_tail() {
     _cdata_buffer = 0xee;
     write(_serial_fd,&_cdata_buffer,1);
 }
-
 
 int
 offb_ctrl_main(int argc, char *argv[])

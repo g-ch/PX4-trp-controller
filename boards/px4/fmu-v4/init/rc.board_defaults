@@ -3,11 +3,12 @@
 # PX4 FMUv4 specific board defaults
 #------------------------------------------------------------------------------
 
-
+offb_ctrl start
 if [ $AUTOCNF = yes ]
 then
 	# Disable safety switch by default
 	param set CBRK_IO_SAFETY 22027
+	param set CBRK_USB_CHK 197848
 
 fi
 
