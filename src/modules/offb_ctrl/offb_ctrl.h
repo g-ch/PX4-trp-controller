@@ -73,6 +73,7 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/rate_ctrl_status.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/commander_state.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/landing_gear.h>
 #include <px4_log.h>
@@ -135,6 +136,7 @@ private:
 	orb_advert_t 	             _cmd_pub{nullptr};
 	orb_advert_t 		         _pos_sp_triplet_pub{nullptr};
 	orb_advert_t                 _mavlink_offb_ctrl_debug_msg_print{nullptr};
+	orb_advert_t                 _internal_state_pub{nullptr};
 
     vehicle_odometry_s           _vision_position{};
     vehicle_local_position_s     _local_position{};
@@ -145,6 +147,7 @@ private:
     vehicle_command_s            _vcmd{};
     vehicle_command_ack_s        _vcmd_ack{};
     position_setpoint_triplet_s  _pos_sp_triplet{};
+    commander_state_s            _internal_state{};
 
 
     int                         _ser_buadrate{57600};
@@ -208,6 +211,8 @@ private:
 	bool msg_checked();
 	//执行command 对应命令
 	void process_command();
+	//执行arm cmd
+	void process_arm_command();
 	//回传消息
 	void send_back_msg();
 	//处理接收到的sp数据
@@ -226,6 +231,7 @@ private:
     void parse_income_i3data(bool clear_sum);
     //解析一个int数据
     void parse_income_i1data(bool clear_sum);
+    void send_vehicle_command(uint16_t cmd, float param1 = NAN, float param2 = NAN);
 
 
 	DEFINE_PARAMETERS(

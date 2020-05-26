@@ -46,8 +46,8 @@
 #define T265_POS_Z 0.0f
 
 
-#define SERIAL_COM_T265 "/dev/ttyS2" //fmuv5ttys3 fmuv2,v3 ttys6
-#define BAUDRATE 57600
+#define SERIAL_COM_T265 "/dev/ttyS3" //fmuv5ttys3 fmuv2,v3 ttys6
+#define BAUDRATE 19200
 static bool thread_should_exit = false;
 static bool thread_running = false;
 static int daemon_task;

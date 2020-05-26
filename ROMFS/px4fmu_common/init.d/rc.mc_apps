@@ -23,7 +23,7 @@
 # xbee_send start
 # xbee_att_control start
 # mesh_xbee_att_control start
-offb_ctrl start
+# offb_ctrl start
 #---------------------------------------
 
 #ll40ls start i2c

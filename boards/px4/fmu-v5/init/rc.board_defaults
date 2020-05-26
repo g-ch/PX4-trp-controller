@@ -3,6 +3,7 @@
 # PX4 FMUv5 specific board defaults
 #------------------------------------------------------------------------------
 
+intel_t265 start
 
 if [ $AUTOCNF = yes ]
 then

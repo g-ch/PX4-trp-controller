@@ -322,6 +322,12 @@ OffboardControl::process_command() {
         case CAMERA:
             break;
     }
+    process_offboard_enable_cmd();
+    process_arm_command();
+}
+
+void
+OffboardControl::process_arm_command(){
     // mavlink_debug_info("ready process arm cmd");
     switch (_current_arm_command){
         case ARM_DO_NOTHING:
@@ -363,7 +369,6 @@ OffboardControl::process_command() {
 
             break;
     }
-
 }
 
 void
@@ -481,7 +486,6 @@ OffboardControl::process_recv_sp_data() {
         parse_income_i3data(true);
         parse_income_i1data(false);
         if(msg_checked()){
-            process_offboard_enable_cmd();
             _offboard_control_mode.ignore_thrust = 0;
             _offboard_control_mode.ignore_attitude = 0;
             _offboard_control_mode.ignore_position = 1;
@@ -495,7 +499,7 @@ OffboardControl::process_recv_sp_data() {
                     &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
-                mavlink_debug_info("offboard enable publish att sp");
+                // mavlink_debug_info("offboard enable publish att sp");
                 if(!_offboard_control_mode.ignore_attitude){
                     _att_sp.timestamp = hrt_absolute_time();
                     matrix::Eulerf sp_euler(_income_3_fdata[0],_income_3_fdata[1],_income_3_fdata[2]);
@@ -521,7 +525,6 @@ OffboardControl::process_recv_sp_data() {
     }else if(_current_sp_type == VELOCITY_SP){
         parse_income_i3data(true);
         if(msg_checked()){
-            process_offboard_enable_cmd();
             _offboard_control_mode.ignore_velocity = 0;
             _offboard_control_mode.ignore_thrust = 1;
             _offboard_control_mode.ignore_position = 1;
@@ -536,9 +539,12 @@ OffboardControl::process_recv_sp_data() {
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
                 if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
+                    send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_LAND);
                     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
                 }else if(_current_takeoff_command==TAKEOFF){
                     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
+                    send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_TAKEOFF);
+
                 }else {
                     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
                 }
@@ -569,7 +575,6 @@ OffboardControl::process_recv_sp_data() {
     }else if(_current_sp_type == LOCAL_POSITION_SP){
         parse_income_i3data(true);
         if(msg_checked()){
-            process_offboard_enable_cmd();
             _offboard_control_mode.ignore_position = 0;
             _offboard_control_mode.ignore_velocity = 1;
             _offboard_control_mode.ignore_thrust = 1;
@@ -626,58 +631,82 @@ OffboardControl::process_recv_sp_data() {
 }
 
 void
+OffboardControl::send_vehicle_command(uint16_t cmd, float param1, float param2)
+{
+    _vcmd.timestamp = hrt_absolute_time();
+    _vcmd.param1 = param1;
+    _vcmd.param2 = param2;
+    _vcmd.param3 = NAN;
+    _vcmd.param4 = NAN;
+    _vcmd.param5 = (double)NAN;
+    _vcmd.param6 = (double)NAN;
+    _vcmd.param7 = NAN;
+    _vcmd.command = cmd;
+    _vcmd.from_external = 1;
+    _vcmd.confirmation = 1;
+    _vcmd.target_system = _vehicle_status.system_id;
+    _vcmd.target_component = _vehicle_status.component_id;
+    _vcmd.source_system = _vehicle_status.system_id;
+    _vcmd.source_component = _vehicle_status.component_id;
+    orb_publish_auto(ORB_ID(vehicle_command),
+                     &_cmd_pub,
+                     &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+}
+
+
+void
 OffboardControl::process_offboard_enable_cmd() {
     // mavlink_debug_info("ready process offboard cmd");
     _vehicle_status_sub.copy(&_vehicle_status);
     _vcmd.timestamp = hrt_absolute_time();
-    _vcmd.command = vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE;
     _vcmd.target_component = _vehicle_status.component_id;
     _vcmd.target_system = _vehicle_status.system_id;
     _vcmd.source_system = _vehicle_status.system_id;
     _vcmd.source_component = _vehicle_status.component_id;
     switch(_current_offboard_command){
-        //TODO: 处理offboard代码
+
+        case POS_IN:
+            _internal_state.main_state = commander_state_s::MAIN_STATE_POSCTL;
+            _internal_state.timestamp = hrt_absolute_time();
+            orb_publish_auto(ORB_ID(commander_state), &_internal_state_pub,
+                             &_internal_state,
+                             nullptr,ORB_PRIO_DEFAULT);
+            break;
+        case ALT_IN:
+            _internal_state.main_state = commander_state_s::MAIN_STATE_ALTCTL;
+            _internal_state.timestamp = hrt_absolute_time();
+            orb_publish_auto(ORB_ID(commander_state), &_internal_state_pub,
+                             &_internal_state,
+                             nullptr,ORB_PRIO_DEFAULT);
+            break;
+
         case TRY_OUT:
-            _vcmd.param1 = 0.0;
-            _vcmd.confirmation = 1;
-            _vcmd.from_external = 1;
-
             if(!_already_try_out){
-                _already_try_out = false;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
-                                 &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
-                orb_publish_auto(ORB_ID(vehicle_command),
-                                 &_cmd_pub,
-                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+                                                                   &_offboard_control_mode,
+                                                                   nullptr,ORB_PRIO_DEFAULT);
+                send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE,0);
                 mavlink_debug_info("try out offboard cmd published");
-
+                _already_try_out = _vehicle_status.nav_state != vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
             }
             break;
         case TRY_IN:
-            _vcmd.param1 = 1.0;
-            _vcmd.confirmation = 1;
-            _vcmd.from_external = 1;
-
             if(!_already_try_in){
-                _already_try_in = true;
                 orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                                  &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
-                orb_publish_auto(ORB_ID(vehicle_command),
-                                 &_cmd_pub,
-                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+
+                send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE,1);
+
                 mavlink_debug_info("try in offboard cmd published");
+                _already_try_in = _vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
             }
             break;
         case STAY_IN:
-            _vcmd.param1 = 1.0;
-            _vcmd.confirmation = 1;
-            _vcmd.from_external = 1;
+
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             if(_vehicle_status.nav_state!=vehicle_status_s::NAVIGATION_STATE_OFFBOARD){
-                orb_publish_auto(ORB_ID(vehicle_command),
-                                 &_cmd_pub,
-                                 &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+                send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE,1);
                 _cmd_ack_sub.copy(&_vcmd_ack);
                 mavlink_debug_info("not in offboard stay in offboard cmd published");
                 if(_vcmd_ack.result==0){
@@ -687,13 +716,7 @@ OffboardControl::process_offboard_enable_cmd() {
 
             break;
         case STAY_OUT:
-            _vcmd.param1 = 0.0;
-            _vcmd.confirmation = 1;
-            _vcmd.from_external = 1;
-
-            orb_publish_auto(ORB_ID(vehicle_command),
-                             &_cmd_pub,
-                             &_vcmd, nullptr, ORB_PRIO_DEFAULT);
+            send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE,0);
             _cmd_ack_sub.copy(&_vcmd_ack);
             mavlink_debug_info("stay out offboard cmd published");
             break;

@@ -58,7 +58,9 @@ enum OFFBOARD_COMMAND:unsigned char{
     STAY_IN = 0x02,
     STAY_OUT = 0x03,
     TRY_IN = 0x04,
-    TRY_OUT = 0x05
+    TRY_OUT = 0x05,
+    ALT_IN = 0x06,
+    POS_IN = 0x07
 };
 
 enum ARM_COMMAND:unsigned char{
