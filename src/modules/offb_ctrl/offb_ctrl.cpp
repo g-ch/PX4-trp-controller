@@ -108,7 +108,7 @@ OffboardControl::serial_init() {
             break;
     }
     if (_serial_fd < 0) {
-        err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
+        DPX4_INFO( "failed to open port: /dev/ttyS%d",_ser_com_num);
         return false;
     }
     int speed;
@@ -168,7 +168,7 @@ OffboardControl::run()
 {
     if(!serial_init()){
         mavlink_debug_info("offb_ctrl /dev/ttyS%d  init failed",_ser_com_num);
-        err(1, "failed to open port: /dev/ttyS%d",_ser_com_num);
+        DPX4_INFO( "failed to open port: /dev/ttyS%d",_ser_com_num);
 
     }
     mavlink_debug_info("offb_ctrl /dev/ttyS%d serial init",_ser_com_num);
@@ -185,7 +185,7 @@ OffboardControl::run()
             mavlink_debug_info("failed to parse frame head 30 times");
             continue;
 		}else{
-            DPX4_INFO("HEAD OK");
+            // DPX4_INFO("HEAD OK");
 		}
 		//得到消息类型
 		_current_msg_type = parse_msg_type<MESSAGE_TYPE>();
@@ -222,10 +222,10 @@ OffboardControl::run()
 		        send_back_msg();
                 break;
 		    case MESSAGE_BACK:
-                err(1,"ERROR! Message back type should be uav send to gcs");
+                DPX4_INFO("ERROR! Message back type should be uav send to gcs");
 		        break;
             default:
-                err(1, "failed to parse offb_ctrl msg type!!");
+                DPX4_INFO( "failed to parse offb_ctrl msg type!!");
                 break;
 		}
         parameters_update_poll(); //更新参数
@@ -245,7 +245,7 @@ OffboardControl::parse_income_i3data(bool clear_sum){
     for (int j = 0; j < 3; ++j) {
         _income_3_idata[j] = (int)(_char_12buffer[4*j+3]<<24|_char_12buffer[4*j+2]<<16|
                                     _char_12buffer[4*j+1]<<8|_char_12buffer[4*j]);
-        _income_3_fdata[j] = _income_3_idata[j];
+        _income_3_fdata[j] = _income_3_idata[j]/SCALE;
     }
 }
 
@@ -448,12 +448,10 @@ OffboardControl::process_recv_state_data() {
         matrix::Quatf q(matrix::Eulerf(rpy[0], rpy[1], rpy[2]));
         q.copyTo(_vision_position.q);
         if(msg_checked()){
-            if(_print_debug_msg){
-                PX4_INFO("XYZRPY: %2.4f, %2.4f, %2.4f, %2.4f, %2.4f, %2.4f",
-                        (double)_vision_position.x,(double)_vision_position.y,(double)_vision_position.z,
-                         (double)rpy[0],(double)rpy[1],(double)rpy[2]
-                );
-            }
+            // DPX4_INFO("XYZRPY: %2.4f, %2.4f, %2.4f, %2.4f, %2.4f, %2.4f",
+            //         (double)_vision_position.x,(double)_vision_position.y,(double)_vision_position.z,
+            //          (double)rpy[0],(double)rpy[1],(double)rpy[2]
+            // );
             orb_publish_auto(ORB_ID(vehicle_visual_odometry),
                     &_vision_position_pub,
                     &_vision_position, nullptr, ORB_PRIO_DEFAULT);
@@ -515,12 +513,13 @@ OffboardControl::process_recv_sp_data() {
                         _att_sp.thrust_body[2] = -(float)_income_1_idata/SCALE;
                     }
                 }
+                orb_publish_auto(ORB_ID(vehicle_attitude_setpoint),
+                                              &_att_sp_pub,
+                                              &_att_sp, nullptr, ORB_PRIO_DEFAULT);
             }
-            orb_publish_auto(ORB_ID(vehicle_attitude_setpoint),
-                             &_att_sp_pub,
-                             &_att_sp, nullptr, ORB_PRIO_DEFAULT);
+
         }else{
-            DPX4_INFO("ERROR!! STATE MSG CHECK FAILED!!!");
+            DPX4_INFO("ERROR!! ATTSP MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == VELOCITY_SP){
         parse_income_i3data(true);
@@ -549,7 +548,7 @@ OffboardControl::process_recv_sp_data() {
                     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
                 }
                 _pos_sp_triplet.current.valid = true;
-                _pos_sp_triplet.current.velocity_valid = false;
+                _pos_sp_triplet.current.velocity_valid = true;
                 _pos_sp_triplet.current.acceleration_valid = false;
                 _pos_sp_triplet.current.alt_valid = false;
                 _pos_sp_triplet.current.yaw_valid = false;
@@ -557,6 +556,7 @@ OffboardControl::process_recv_sp_data() {
                 _pos_sp_triplet.previous.valid = false;
                 _pos_sp_triplet.next.valid = false;
                 _pos_sp_triplet.next.position_valid = false;
+                _pos_sp_triplet.current.timestamp = hrt_absolute_time();
                 if(!_offboard_control_mode.ignore_velocity){
                     _pos_sp_triplet.current.velocity_valid =true;
                     _pos_sp_triplet.current.vx = _income_3_fdata[0];
@@ -565,59 +565,78 @@ OffboardControl::process_recv_sp_data() {
                     //need set frame id???
                     // _pos_sp_triplet.current.velocity_frame = ;
                 }
+                // DPX4_INFO("RECV POSSP MSG publish!!!%2.4f ,%2.4f ,%2.4f ",
+                //         (double)_income_3_fdata[0],
+                //         (double)_income_3_fdata[1],
+                //         (double)_income_3_fdata[2]
+                //         );
+
+                orb_publish_auto(ORB_ID(position_setpoint_triplet),
+                                 &_pos_sp_triplet_pub,
+                                 &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
             }
-            orb_publish_auto(ORB_ID(position_setpoint_triplet),
-                             &_pos_sp_triplet_pub,
-                             &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
+
         }else{
-            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+            DPX4_INFO("ERROR!! POSSP MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == LOCAL_POSITION_SP){
         parse_income_i3data(true);
         if(msg_checked()){
-            _offboard_control_mode.ignore_position = 0;
-            _offboard_control_mode.ignore_velocity = 1;
-            _offboard_control_mode.ignore_thrust = 1;
-            _offboard_control_mode.ignore_acceleration_force = 1;
-            _offboard_control_mode.ignore_bodyrate_x = 1;
-            _offboard_control_mode.ignore_bodyrate_y = 1;
-            _offboard_control_mode.ignore_bodyrate_z = 1;
-            _offboard_control_mode.ignore_attitude = 1;
+            _offboard_control_mode.ignore_position = false;  //false if used
+            _offboard_control_mode.ignore_velocity = false;
+            _offboard_control_mode.ignore_thrust = true;
+            _offboard_control_mode.ignore_acceleration_force = true;
+            _offboard_control_mode.ignore_bodyrate_x = true;
+            _offboard_control_mode.ignore_bodyrate_y = true;
+            _offboard_control_mode.ignore_bodyrate_z = true;
+            _offboard_control_mode.ignore_attitude = true;
             _offboard_control_mode.timestamp = hrt_absolute_time();
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
-                if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
-                }else if(_current_takeoff_command==TAKEOFF){
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
-                }else {
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
-                }
-                _pos_sp_triplet.current.velocity_valid = false;
+                // if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
+                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
+                // }else if(_current_takeoff_command==TAKEOFF){
+                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
+                // }else {
+                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+                // }
+                _pos_sp_triplet.current.position_valid =true;
+                _pos_sp_triplet.current.valid = true;
+                _pos_sp_triplet.current.velocity_valid = true;
                 _pos_sp_triplet.current.acceleration_valid = false;
                 _pos_sp_triplet.current.alt_valid = false;
                 _pos_sp_triplet.current.yaw_valid = false;
                 _pos_sp_triplet.current.yawspeed_valid = false;
-                _pos_sp_triplet.current.valid = true;
                 _pos_sp_triplet.previous.valid = false;
                 _pos_sp_triplet.next.valid = false;
+                _pos_sp_triplet.timestamp = hrt_absolute_time();
+                _pos_sp_triplet.current.timestamp = hrt_absolute_time();
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 
                 if(!_offboard_control_mode.ignore_position){
-                    _pos_sp_triplet.current.position_valid =true;
                     _pos_sp_triplet.current.x = _income_3_fdata[0];
                     _pos_sp_triplet.current.y = _income_3_fdata[1];
                     _pos_sp_triplet.current.z = _income_3_fdata[2];
-                    //need set frame id???
-                    // _pos_sp_triplet.current.velocity_frame = ;
+                    // _pos_sp_triplet.current.vx = 1.0;
+                    // _pos_sp_triplet.current.vy = 1.0;
+                    // _pos_sp_triplet.current.vz = 1.0;
                 }
+
+                DPX4_INFO("RECV POSSP MSG publish!!!%2.4f ,%2.4f ,%2.4f ",
+                          (double)_income_3_fdata[0],
+                          (double)_income_3_fdata[1],
+                          (double)_income_3_fdata[2]
+                );
+
+                orb_publish_auto(ORB_ID(position_setpoint_triplet),
+                                              &_pos_sp_triplet_pub,
+                                              &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
             }
-            orb_publish_auto(ORB_ID(position_setpoint_triplet),
-                             &_pos_sp_triplet_pub,
-                             &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
+
         }else{
-            err(1,"ERROR!! STATE MSG CHECK FAILED!!!");
+            DPX4_INFO("ERROR!! SP MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == GLOBAL_POSITION_SP){
         parse_income_i3data(true);
@@ -699,6 +718,8 @@ OffboardControl::process_offboard_enable_cmd() {
 
                 mavlink_debug_info("try in offboard cmd published");
                 _already_try_in = _vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
+            }else{
+                mavlink_debug_info("already in offboard ");
             }
             break;
         case STAY_IN:
