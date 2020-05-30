@@ -637,8 +637,10 @@ Mavlink::mavlink_open_uart(const int baud, const char *uart_name, const bool for
 
 	/* Clear ONLCR flag (which appends a CR for every LF) */
 	uart_config.c_oflag &= ~ONLCR;
+    // uart_config.c_cflag &= ~CRTSCTS;
+    // uart_config.c_cflag &= ~(CSTOPB|PARENB);
 
-	/* USB serial is indicated by /dev/ttyACM0*/
+    /* USB serial is indicated by /dev/ttyACM0*/
 	if (strcmp(uart_name, "/dev/ttyACM0") != OK && strcmp(uart_name, "/dev/ttyACM1") != OK) {
 
 		/* Set baud rate */

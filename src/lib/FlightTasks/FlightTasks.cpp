@@ -3,6 +3,8 @@
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 
+orb_advert_t _mavlink_log_pub{nullptr};
+
 FlightTasks::FlightTasks()
 {
 	// initialize all flight-tasks
@@ -88,12 +90,23 @@ int FlightTasks::switchTask(FlightTaskIndex new_task_index)
 	_subscription_array.forcedUpdate(); // make sure data is available for all new subscriptions
 
 	// activation failed
-	if (!_current_task.task->updateInitialize() || !_current_task.task->activate(last_setpoint)) {
-		_current_task.task->~FlightTask();
-		_current_task.task = nullptr;
-		_current_task.index = FlightTaskIndex::None;
-		return -3;
+
+
+	// activation failed
+	if (!_current_task.task->updateInitialize()){
+        mavlink_log_critical(&_mavlink_log_pub, "Offboard updateInitialize failed  ");
 	}
+
+	if(!_current_task.task->activate(last_setpoint)){
+        mavlink_log_critical(&_mavlink_log_pub, "Offboard last_setpoint failed  ");
+    }
+
+    if (!_current_task.task->updateInitialize() || !_current_task.task->activate(last_setpoint)) {
+    	_current_task.task->~FlightTask();
+    	_current_task.task = nullptr;
+    	_current_task.index = FlightTaskIndex::None;
+    	return -3;
+    }
 
 	return 0;
 }

@@ -767,15 +767,19 @@ MulticopterPositionControl::start_flight_task()
 		int error = _flight_tasks.switchTask(FlightTaskIndex::Offboard);
 
 		if (error != 0) {
-			if (prev_failure_count == 0) {
-				PX4_WARN("Offboard activation failed with error: %s", _flight_tasks.errorToString(error));
+            if (prev_failure_count == 0) {
+                mavlink_log_critical(&_mavlink_log_pub, "Offboard activation failed with error: %s", _flight_tasks.errorToString(error));
+
+                PX4_WARN("Offboard activation failed with error: %s", _flight_tasks.errorToString(error));
 			}
+
 
 			task_failure = true;
 			_task_failure_count++;
 
 		} else {
-			// we want to be in this mode, reset the failure count
+            // mavlink_log_critical(&_mavlink_log_pub, "Offboard activation successed with NO error");
+            // we want to be in this mode, reset the failure count
 			_task_failure_count = 0;
 		}
 	}

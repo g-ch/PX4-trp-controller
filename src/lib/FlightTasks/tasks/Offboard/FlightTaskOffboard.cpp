@@ -36,8 +36,10 @@
 #include "FlightTaskOffboard.hpp"
 #include <mathlib/mathlib.h>
 #include <float.h>
+#include "systemlib/mavlink_log.h"
 
 using namespace matrix;
+orb_advert_t _mavlink__log_pub{nullptr};
 
 bool FlightTaskOffboard::initializeSubscriptions(SubscriptionArray &subscription_array)
 {
@@ -45,23 +47,30 @@ bool FlightTaskOffboard::initializeSubscriptions(SubscriptionArray &subscription
 		return false;
 	}
 
-	if (!subscription_array.get(ORB_ID(position_setpoint_triplet), _sub_triplet_setpoint)) {
-		return false;
-	}
+    return subscription_array.get(ORB_ID(position_setpoint_triplet), _sub_triplet_setpoint);
 
-	return true;
 }
 
 bool FlightTaskOffboard::updateInitialize()
 {
 	bool ret = FlightTask::updateInitialize();
-	// require a valid triplet
+    if(!ret)mavlink_log_critical(&_mavlink__log_pub, "Offboard flighttask first update failed  ")
+
+    // require a valid triplet
 	ret = ret && _sub_triplet_setpoint->get().current.valid;
-	// require valid position / velocity in xy
-	return ret && PX4_ISFINITE(_position(0))
+    if(!_sub_triplet_setpoint->get().current.position_valid)
+        mavlink_log_critical(&_mavlink__log_pub, "Offboard flighttask position pose data valid failed  ")
+    if(!_sub_triplet_setpoint->get().current.valid)
+        mavlink_log_critical(&_mavlink__log_pub, "Offboard flighttask position data valid failed  ")
+
+    // require valid position / velocity in xy
+	ret =  ret && PX4_ISFINITE(_position(0))
 	       && PX4_ISFINITE(_position(1))
 	       && PX4_ISFINITE(_velocity(0))
 	       && PX4_ISFINITE(_velocity(1));
+    if(!ret)mavlink_log_critical(&_mavlink__log_pub, "Offboard flighttask updateInitialize failed  ")
+    return ret;
+
 }
 
 bool FlightTaskOffboard::activate(vehicle_local_position_setpoint_s last_setpoint)

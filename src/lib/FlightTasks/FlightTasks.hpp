@@ -64,7 +64,7 @@ public:
 		}
 	}
 
-	/**
+    /**
 	 * Call regularly in the control loop cycle to execute the task
 	 * @return true on success, false on error
 	 */

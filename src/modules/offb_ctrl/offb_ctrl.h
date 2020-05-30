@@ -128,13 +128,13 @@ private:
     uORB::Subscription          _control_mod_sub{ORB_ID(vehicle_control_mode)};
     uORB::Subscription          _cmd_ack_sub{ORB_ID(vehicle_command_ack)};
     uORB::Subscription          _vehicle_status_sub{ORB_ID(vehicle_status)};
+    uORB::Subscription          _pos_sp_triplet_sub{ORB_ID(position_setpoint_triplet)};
 
 
 	orb_advert_t                 _vision_position_pub{nullptr};
 	orb_advert_t                 _att_sp_pub{nullptr};
 	orb_advert_t                 _offboard_control_mode_pub{nullptr};
 	orb_advert_t 	             _cmd_pub{nullptr};
-	orb_advert_t 		         _pos_sp_triplet_pub{nullptr};
 	orb_advert_t                 _mavlink_offb_ctrl_debug_msg_print{nullptr};
 	orb_advert_t                 _internal_state_pub{nullptr};
 
@@ -146,9 +146,9 @@ private:
     vehicle_status_s             _vehicle_status{};
     vehicle_command_s            _vcmd{};
     vehicle_command_ack_s        _vcmd_ack{};
-    position_setpoint_triplet_s  _pos_sp_triplet{};
     commander_state_s            _internal_state{};
 
+    uORB::Publication<position_setpoint_triplet_s>		_pos_sp_triplet_pub{ORB_ID(position_setpoint_triplet)};
 
     int                         _ser_buadrate{57600};
     int                         _ser_com_num{1};

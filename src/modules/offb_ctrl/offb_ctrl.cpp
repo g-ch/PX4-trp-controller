@@ -200,9 +200,7 @@ OffboardControl::run()
                 _msg_sum_chk = _current_msg_type+_current_mode+_current_offboard_command+_current_arm_command+
                                 _current_takeoff_command+_current_back_info;
                 if(msg_checked()){
-                    if(_print_debug_msg){
-                        PX4_INFO("COMMAND CHECKED OK");
-                    }
+                    // DPX4_INFO("COMMAND CHECKED OK");
                     process_command();
                 }else{
                     DPX4_INFO("ERROR!! COMMAND MSG CHECK FAILED!!!");
@@ -522,6 +520,7 @@ OffboardControl::process_recv_sp_data() {
             DPX4_INFO("ERROR!! ATTSP MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == VELOCITY_SP){
+        position_setpoint_triplet_s  _pos_sp_triplet{};
         parse_income_i3data(true);
         if(msg_checked()){
             _offboard_control_mode.ignore_velocity = 0;
@@ -536,103 +535,128 @@ OffboardControl::process_recv_sp_data() {
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
             _control_mod_sub.copy(&_control_mode);
-            if(_control_mode.flag_control_offboard_enabled){
-                if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
-                    send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_LAND);
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
-                }else if(_current_takeoff_command==TAKEOFF){
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
-                    send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_TAKEOFF);
+            if (_current_takeoff_command == LAND || _current_takeoff_command == EMER_LAN) {
+                send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_LAND);
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
+            } else if (_current_takeoff_command == TAKEOFF) {
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
+                send_vehicle_command(vehicle_command_s::VEHICLE_CMD_NAV_TAKEOFF);
 
-                }else {
-                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
-                }
-                _pos_sp_triplet.current.valid = true;
-                _pos_sp_triplet.current.velocity_valid = true;
-                _pos_sp_triplet.current.acceleration_valid = false;
-                _pos_sp_triplet.current.alt_valid = false;
-                _pos_sp_triplet.current.yaw_valid = false;
-                _pos_sp_triplet.current.yawspeed_valid = false;
-                _pos_sp_triplet.previous.valid = false;
-                _pos_sp_triplet.next.valid = false;
-                _pos_sp_triplet.next.position_valid = false;
-                _pos_sp_triplet.current.timestamp = hrt_absolute_time();
-                if(!_offboard_control_mode.ignore_velocity){
-                    _pos_sp_triplet.current.velocity_valid =true;
-                    _pos_sp_triplet.current.vx = _income_3_fdata[0];
-                    _pos_sp_triplet.current.vy = _income_3_fdata[1];
-                    _pos_sp_triplet.current.vz = _income_3_fdata[2];
-                    //need set frame id???
-                    // _pos_sp_triplet.current.velocity_frame = ;
-                }
-                // DPX4_INFO("RECV POSSP MSG publish!!!%2.4f ,%2.4f ,%2.4f ",
-                //         (double)_income_3_fdata[0],
-                //         (double)_income_3_fdata[1],
-                //         (double)_income_3_fdata[2]
-                //         );
-
-                orb_publish_auto(ORB_ID(position_setpoint_triplet),
-                                 &_pos_sp_triplet_pub,
-                                 &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
+            } else {
+                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
             }
+            _pos_sp_triplet.current.valid = true;
+            _pos_sp_triplet.current.velocity_valid = true;
+            _pos_sp_triplet.current.acceleration_valid = false;
+            _pos_sp_triplet.current.alt_valid = false;
+            _pos_sp_triplet.current.yaw_valid = false;
+            _pos_sp_triplet.current.yawspeed_valid = false;
+            _pos_sp_triplet.previous.valid = false;
+            _pos_sp_triplet.next.valid = false;
+            _pos_sp_triplet.next.position_valid = false;
+            _pos_sp_triplet.current.timestamp = hrt_absolute_time();
+            if (!_offboard_control_mode.ignore_velocity) {
+                _pos_sp_triplet.current.velocity_valid = true;
+                _pos_sp_triplet.current.vx = _income_3_fdata[0];
+                _pos_sp_triplet.current.vy = _income_3_fdata[1];
+                _pos_sp_triplet.current.vz = _income_3_fdata[2];
+            }
+            _pos_sp_triplet_pub.publish(_pos_sp_triplet);
+
+
 
         }else{
             DPX4_INFO("ERROR!! POSSP MSG CHECK FAILED!!!");
         }
     }else if(_current_sp_type == LOCAL_POSITION_SP){
+        position_setpoint_triplet_s  _pos_sp_triplet{};
+        //Bitmask toindicate which dimensions should be ignored(1 means ignore,0 means not ignore; Bit 10 must set to 0)
+        //Bit 1:x, bit 2:y, bit 3:z, bit 4:vx, bit 5:vy, bit 6:vz, bit 7:ax, bit 8:ay, bit 9:az, bit 10:is_force_sp,
+        // bit 11:yaw, bit 12:yaw_rate Bit 10 should set to 0, means is not force sp
+        uint16_t type_mask = 0b110111111000;
         parse_income_i3data(true);
         if(msg_checked()){
-            _offboard_control_mode.ignore_position = false;  //false if used
-            _offboard_control_mode.ignore_velocity = false;
-            _offboard_control_mode.ignore_thrust = true;
-            _offboard_control_mode.ignore_acceleration_force = true;
-            _offboard_control_mode.ignore_bodyrate_x = true;
-            _offboard_control_mode.ignore_bodyrate_y = true;
-            _offboard_control_mode.ignore_bodyrate_z = true;
-            _offboard_control_mode.ignore_attitude = true;
+            _control_mod_sub.copy(&_control_mode);
             _offboard_control_mode.timestamp = hrt_absolute_time();
+            _offboard_control_mode.ignore_position = (bool)(type_mask & 0x7);
+            _offboard_control_mode.ignore_alt_hold = (bool)(type_mask & 0x4);
+            _offboard_control_mode.ignore_velocity = (bool)(type_mask & 0x38);
+            _offboard_control_mode.ignore_acceleration_force = (bool)(type_mask & 0x1C0);
+            _offboard_control_mode.ignore_acceleration_force = true;
+            _offboard_control_mode.ignore_attitude = (bool)(type_mask & 0x400);
+            _offboard_control_mode.ignore_bodyrate_x = (bool)(type_mask & 0x800);
+            _offboard_control_mode.ignore_bodyrate_y = (bool)(type_mask & 0x800);
+            _offboard_control_mode.ignore_bodyrate_z = (bool)(type_mask & 0x800);
             orb_publish_auto(ORB_ID(offboard_control_mode), &_offboard_control_mode_pub,
                              &_offboard_control_mode, nullptr,ORB_PRIO_DEFAULT);
-            _control_mod_sub.copy(&_control_mode);
             if(_control_mode.flag_control_offboard_enabled){
-                // if(_current_takeoff_command==LAND||_current_takeoff_command==EMER_LAN){
-                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
-                // }else if(_current_takeoff_command==TAKEOFF){
-                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
-                // }else {
-                //     _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
-                // }
-                _pos_sp_triplet.current.position_valid =true;
-                _pos_sp_triplet.current.valid = true;
-                _pos_sp_triplet.current.velocity_valid = true;
-                _pos_sp_triplet.current.acceleration_valid = false;
-                _pos_sp_triplet.current.alt_valid = false;
-                _pos_sp_triplet.current.yaw_valid = false;
-                _pos_sp_triplet.current.yawspeed_valid = false;
+                /* yaw ignore flag mapps to ignore_attitude */
+                bool is_takeoff_sp = (bool)(type_mask & 0x1000);
+                bool is_land_sp = (bool)(type_mask & 0x2000);
+                bool is_loiter_sp = (bool)(type_mask & 0x3000);
+                bool is_idle_sp = (bool)(type_mask & 0x4000);
+                _pos_sp_triplet.timestamp = hrt_absolute_time();
                 _pos_sp_triplet.previous.valid = false;
                 _pos_sp_triplet.next.valid = false;
-                _pos_sp_triplet.timestamp = hrt_absolute_time();
-                _pos_sp_triplet.current.timestamp = hrt_absolute_time();
-                _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+                _pos_sp_triplet.current.valid = true;
 
-                if(!_offboard_control_mode.ignore_position){
+                if (is_loiter_sp) {
+                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LOITER;
+
+                } else if (is_takeoff_sp) {
+                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
+
+                } else if (is_land_sp) {
+                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
+
+                } else if (is_idle_sp) {
+                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_IDLE;
+
+                } else {
+                    _pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+                }
+
+                /* set the local pos values */
+                if (!_offboard_control_mode.ignore_position) {
+
+                    _pos_sp_triplet.current.position_valid = true;
                     _pos_sp_triplet.current.x = _income_3_fdata[0];
                     _pos_sp_triplet.current.y = _income_3_fdata[1];
                     _pos_sp_triplet.current.z = _income_3_fdata[2];
-                    // _pos_sp_triplet.current.vx = 1.0;
-                    // _pos_sp_triplet.current.vy = 1.0;
-                    // _pos_sp_triplet.current.vz = 1.0;
+                    _pos_sp_triplet.current.vx = 0.0;
+                    _pos_sp_triplet.current.vy = 0.0;
+                    _pos_sp_triplet.current.vz = 0.0;
+
+                } else {
+                    _pos_sp_triplet.current.position_valid = false;
                 }
 
-                DPX4_INFO("RECV POSSP MSG publish!!!%2.4f ,%2.4f ,%2.4f ",
-                          (double)_income_3_fdata[0],
-                          (double)_income_3_fdata[1],
-                          (double)_income_3_fdata[2]
-                );
+                /* set the local vel values */
+                if (!_offboard_control_mode.ignore_velocity) {
 
-                orb_publish_auto(ORB_ID(position_setpoint_triplet),
-                                              &_pos_sp_triplet_pub,
-                                              &_pos_sp_triplet, nullptr, ORB_PRIO_DEFAULT);
+                    _pos_sp_triplet.current.velocity_valid = true;
+                    _pos_sp_triplet.current.vx = _income_3_fdata[0];
+                    _pos_sp_triplet.current.vy = _income_3_fdata[1];
+                    _pos_sp_triplet.current.vz = _income_3_fdata[2];
+                    _pos_sp_triplet.current.velocity_frame = 1;
+
+                } else {
+                    _pos_sp_triplet.current.velocity_valid = false;
+                }
+                _pos_sp_triplet.timestamp = hrt_absolute_time();
+                _pos_sp_triplet.current.valid = true;
+                _pos_sp_triplet.current.position_valid = true;
+                _pos_sp_triplet_pub.publish(_pos_sp_triplet);
+                position_setpoint_triplet_s  _pos_sp_triplet_buffer{};
+                _pos_sp_triplet_sub.copy(&_pos_sp_triplet_buffer);
+                // if(_pos_sp_triplet_buffer.current.valid&&_pos_sp_triplet_buffer.current.position_valid){
+                //     mavlink_debug_info("published sub then all valid");
+                // }
+                // DPX4_INFO("RECV POSSP MSG publish!!!%2.4f ,%2.4f ,%2.4f ",
+                //         (double)_income_3_fdata[0],
+                //         (double)_income_3_fdata[1],
+                //         (double)_income_3_fdata[2]
+                //         );
             }
 
         }else{
