@@ -43,12 +43,14 @@ orb_advert_t _mavlink__log_pub{nullptr};
 
 bool FlightTaskOffboard::initializeSubscriptions(SubscriptionArray &subscription_array)
 {
-	if (!FlightTask::initializeSubscriptions(subscription_array)) {
-		return false;
+    bool ret = FlightTask::initializeSubscriptions(subscription_array);
+    if (!ret) {
+        mavlink_log_critical(&_mavlink__log_pub, "Offboard init sub local pos or att failed")
+		return ret;
 	}
-
-    return subscription_array.get(ORB_ID(position_setpoint_triplet), _sub_triplet_setpoint);
-
+	ret = ret&&subscription_array.get(ORB_ID(position_setpoint_triplet), _sub_triplet_setpoint);
+    if(!ret)mavlink_log_critical(&_mavlink__log_pub, "Offboard init sub triplet failed")
+    return ret;
 }
 
 bool FlightTaskOffboard::updateInitialize()
