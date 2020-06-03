@@ -3,12 +3,6 @@
     <!-- MAVROS posix SITL environment launch script -->
     <!-- launches MAVROS, PX4 SITL, Gazebo environment, and spawns vehicle -->
     <!-- vehicle pose -->
-    <arg name="x" default="0"/>
-    <arg name="y" default="0"/>
-    <arg name="z" default="0"/>
-    <arg name="R" default="0"/>
-    <arg name="P" default="0"/>
-    <arg name="Y" default="0"/>
     <!-- vehicle model and world -->
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
@@ -27,12 +21,12 @@
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
     <include file="$(find px4)/launch/posix_sitl.launch">
-        <arg name="x" value="$(arg x)"/>
-        <arg name="y" value="$(arg y)"/>
-        <arg name="z" value="$(arg z)"/>
-        <arg name="R" value="$(arg R)"/>
-        <arg name="P" value="$(arg P)"/>
-        <arg name="Y" value="$(arg Y)"/>
+        <arg name="x" value="1"/>
+        <arg name="y" value="0"/>
+        <arg name="z" value="0"/>
+        <arg name="R" value="0"/>
+        <arg name="P" value="0"/>
+        <arg name="Y" value="0"/>
         <arg name="world" value="$(arg world)"/>
         <arg name="vehicle" value="$(arg vehicle)"/>
         <arg name="sdf" value="$(arg sdf)"/>
@@ -51,7 +45,6 @@
 	<arg name="log_output" default="screen" />
 	<arg name="fcu_protocol" default="v2.0" />
 	<arg name="respawn_mavros" default="false" />
-
 	<include file="$(find gps_vicon_control)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find gps_vicon_control)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find gps_vicon_control)/launch/px4_config.yaml" />
