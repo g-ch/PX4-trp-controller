@@ -1801,9 +1801,7 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
         configure_stream_local("LOCAL_POSITION_NED", 25.0f);
         configure_stream_local("ATTITUDE", 1.0f);
 
-
-
-            //stream nothing
+        //stream nothing  added by Tonser. 2020.6.3
 		break;
 
 	case MAVLINK_MODE_CONFIG:
