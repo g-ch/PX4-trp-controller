@@ -188,10 +188,7 @@ private:
 	 */
 	void parameters_update_poll();
 
-	void get_data(){
-        _cdata_buffer = '0';
-        read(_serial_fd,&_cdata_buffer,1);
-    }
+	void get_data();
 
     template <typename T>
     T parse_msg_type(){
@@ -202,7 +199,7 @@ private:
     template <typename T>
     void send_msg_type(T a){
 	    _cdata_buffer = a;
-	    write(_serial_fd,&_cdata_buffer,1);
+	    if(write(_serial_fd,&_cdata_buffer,1)>0){}
 	}
 
 	//解析帧头数据

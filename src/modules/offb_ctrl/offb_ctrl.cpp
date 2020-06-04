@@ -230,13 +230,20 @@ OffboardControl::run()
 	}
 }
 
+void OffboardControl::get_data(){
+    _cdata_buffer = '0';
+
+    auto _a =  read(_serial_fd,&_cdata_buffer,1);
+    _a = _a;
+}
+
 void
 OffboardControl::parse_income_i3data(bool clear_sum){
     if(clear_sum)_msg_sum_chk = 0x00;
     memset(&_char_12buffer, 0,sizeof(_char_12buffer));
     for (int i = 0; i < 12; ++i) {
         _cdata_buffer = '0';
-        read(_serial_fd,&_cdata_buffer,1);
+        get_data();
         _char_12buffer[i] = _cdata_buffer;
         _msg_sum_chk+=_char_12buffer[i];
     }
@@ -253,7 +260,7 @@ OffboardControl::parse_income_i1data(bool clear_sum){
     memset(&_char_4buffer, 0,sizeof(_char_4buffer));
     for (int i = 0; i < 4; ++i) {
         _cdata_buffer = '0';
-        read(_serial_fd,&_cdata_buffer,1);
+        get_data();
         _char_4buffer[i] = _cdata_buffer;
         _msg_sum_chk+=_char_4buffer[i];
     }
@@ -385,7 +392,7 @@ OffboardControl::send_back_msg(){
         send_int_data(_income_3_idata[0],1);
         send_int_data(_income_3_idata[1],0);
         send_int_data(_income_3_idata[2],0);
-        write(_serial_fd,&_msg_sum_chk,1);
+        if(write(_serial_fd,&_msg_sum_chk,1)>0){}
         _msg_sum_chk = 0x00;
         send_frame_tail();
     }else if(_current_back_info==ONLY_IMU){
@@ -400,7 +407,7 @@ OffboardControl::send_back_msg(){
         send_int_data(_income_3_idata[0],1);
         send_int_data(_income_3_idata[1],0);
         send_int_data(_income_3_idata[2],0);
-        write(_serial_fd,&_msg_sum_chk,1);
+        if(write(_serial_fd,&_msg_sum_chk,1)>0){}
         _msg_sum_chk = 0x00;
         send_frame_tail();
 
@@ -422,7 +429,7 @@ OffboardControl::send_back_msg(){
         send_int_data(_income_3_idata[0],0);
         send_int_data(_income_3_idata[1],0);
         send_int_data(_income_3_idata[2],0);
-        write(_serial_fd,&_msg_sum_chk,1);
+        if(write(_serial_fd,&_msg_sum_chk,1)>0){}
         _msg_sum_chk = 0x00;
         send_frame_tail();
     }else if(_current_back_info==DO_NOTHING){
@@ -777,21 +784,21 @@ OffboardControl::send_int_data(int a,bool clear){
     _char_4buffer[1] = BYTE2(a);_msg_sum_chk+=_char_4buffer[1];
     _char_4buffer[2] = BYTE1(a);_msg_sum_chk+=_char_4buffer[2];
     _char_4buffer[3] = BYTE0(a);_msg_sum_chk+=_char_4buffer[3];
-    write(_serial_fd,_char_4buffer,4);
+    if(write(_serial_fd,_char_4buffer,4)>0){}
 }
 
 void
 OffboardControl::send_frame_head() {
     _cdata_buffer = 0xfe;
-    write(_serial_fd,&_cdata_buffer,1);
+    if(write(_serial_fd,&_cdata_buffer,1)>0){}
     _cdata_buffer = 0x22;
-    write(_serial_fd,&_cdata_buffer,1);
+    if(write(_serial_fd,&_cdata_buffer,1)>0){}
 }
 
 void
 OffboardControl::send_frame_tail() {
     _cdata_buffer = 0xee;
-    write(_serial_fd,&_cdata_buffer,1);
+    if(write(_serial_fd,&_cdata_buffer,1)>0){}
 }
 
 int
