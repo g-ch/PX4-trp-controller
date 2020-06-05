@@ -3,12 +3,6 @@
     <!-- MAVROS posix SITL environment launch script -->
     <!-- launches MAVROS, PX4 SITL, Gazebo environment, and spawns vehicle -->
     <!-- vehicle pose -->
-    <arg name="x" default="0"/>
-    <arg name="y" default="0"/>
-    <arg name="z" default="0"/>
-    <arg name="R" default="0"/>
-    <arg name="P" default="0"/>
-    <arg name="Y" default="0"/>
     <!-- vehicle model and world -->
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
@@ -23,17 +17,16 @@
     <arg name="respawn_gazebo" default="false"/>
     <!-- MAVROS configs -->
     <arg name="fcu_url" default="udp://:14540@localhost:14557"/>
-    <arg name="respawn_mavros" default="false"/>
     <!-- PX4 configs -->
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
     <include file="$(find px4)/launch/posix_sitl.launch">
-        <arg name="x" value="$(arg x)"/>
-        <arg name="y" value="$(arg y)"/>
-        <arg name="z" value="$(arg z)"/>
-        <arg name="R" value="$(arg R)"/>
-        <arg name="P" value="$(arg P)"/>
-        <arg name="Y" value="$(arg Y)"/>
+        <arg name="x" value="1"/>
+        <arg name="y" value="0"/>
+        <arg name="z" value="0"/>
+        <arg name="R" value="0"/>
+        <arg name="P" value="0"/>
+        <arg name="Y" value="0"/>
         <arg name="world" value="$(arg world)"/>
         <arg name="vehicle" value="$(arg vehicle)"/>
         <arg name="sdf" value="$(arg sdf)"/>
@@ -44,11 +37,26 @@
         <arg name="paused" value="$(arg paused)"/>
         <arg name="respawn_gazebo" value="$(arg respawn_gazebo)"/>
     </include>
-    <!-- MAVROS -->
-    <include file="$(find mavros)/launch/px4.launch">
-        <!-- GCS link is provided by SITL -->
-        <arg name="gcs_url" value=""/>
-        <arg name="fcu_url" value="$(arg fcu_url)"/>
-        <arg name="respawn_mavros" value="$(arg respawn_mavros)"/>
-    </include>
+
+	<arg name="gcs_url" default="" />
+	<arg name="tgt_system" default="1" />
+	<arg name="mavros_id" default="mavros" />
+	<arg name="tgt_component" default="1" />
+	<arg name="log_output" default="screen" />
+	<arg name="fcu_protocol" default="v2.0" />
+	<arg name="respawn_mavros" default="false" />
+	<include file="$(find gps_vicon_control)/launch/node.launch">
+		<arg name="pluginlists_yaml" value="$(find gps_vicon_control)/launch/px4_pluginlists.yaml" />
+		<arg name="config_yaml" value="$(find gps_vicon_control)/launch/px4_config.yaml" />
+		<arg name="fcu_url" value="$(arg fcu_url)" />
+		<arg name="gcs_url" value="$(arg gcs_url)" />
+		<arg name="tgt_system" value="$(arg tgt_system)" />
+		<arg name="system_id" value="$(arg tgt_system)" />
+		<arg name="mavros_id" value="$(arg mavros_id)" />
+		<arg name="tgt_component" value="$(arg tgt_component)" />
+		<arg name="log_output" value="$(arg log_output)" />
+		<arg name="fcu_protocol" value="$(arg fcu_protocol)" />
+		<arg name="respawn_mavros" default="$(arg respawn_mavros)" />
+	</include>
+
 </launch>
