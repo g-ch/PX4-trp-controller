@@ -4,43 +4,37 @@
     <!-- launches MAVROS, PX4 SITL, Gazebo environment, and spawns vehicle -->
     <!-- vehicle pose -->
     <!-- vehicle model and world -->
+    <arg name ="ID" default = "0"/>
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
-    <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/>
-    <arg name="sdf" default="$(find mavlink_sitl_gazebo)/models/$(arg vehicle)/$(arg vehicle).sdf"/>
+
 
     <!-- gazebo configs -->
-    <arg name="gui" default="true"/>
-    <arg name="debug" default="false"/>
-    <arg name="verbose" default="false"/>
+
     <arg name="paused" default="false"/>
-    <arg name="respawn_gazebo" default="false"/>
     <!-- MAVROS configs -->
     <arg name="fcu_url" default="udp://:14540@localhost:14557"/>
     <!-- PX4 configs -->
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
-    <include file="$(find px4)/launch/posix_sitl.launch">
-        <arg name="x" value="1"/>
+    <include file="$(find px4)/launch/single_vehicle_spawn.launch">
+        <arg name="ID" value="$(arg ID)"/>
+        <arg name="x" value="$(arg ID)"/>
         <arg name="y" value="0"/>
         <arg name="z" value="0"/>
         <arg name="R" value="0"/>
         <arg name="P" value="0"/>
         <arg name="Y" value="0"/>
-        <arg name="world" value="$(arg world)"/>
+
         <arg name="vehicle" value="$(arg vehicle)"/>
-        <arg name="sdf" value="$(arg sdf)"/>
-        <arg name="gui" value="$(arg gui)"/>
+
         <arg name="interactive" value="$(arg interactive)"/>
-        <arg name="debug" value="$(arg debug)"/>
-        <arg name="verbose" value="$(arg verbose)"/>
-        <arg name="paused" value="$(arg paused)"/>
-        <arg name="respawn_gazebo" value="$(arg respawn_gazebo)"/>
+
     </include>
 
 	<arg name="gcs_url" default="" />
-	<arg name="tgt_system" default="1" />
-	<arg name="mavros_id" default="mavros" />
+	<arg name="tgt_system" default="2" />
+	<arg name="mavros_id" default="mavros$(arg ID)" />
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
 	<arg name="fcu_protocol" default="v2.0" />

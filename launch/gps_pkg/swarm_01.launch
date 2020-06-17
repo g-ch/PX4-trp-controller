@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find px4)/launch/gps_pkg/swarm_0.launch">
+
+	</include>
+
+	<include file="$(find px4)/launch/gps_pkg/swarm_1.launch">
+
+	</include>
+
+</launch>
