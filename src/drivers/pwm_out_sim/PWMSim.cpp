@@ -219,13 +219,13 @@ PWMSim::run()
 			continue;
 		}
 
-		/* get controls for required topics */
+		/* get controls for required topics */  ///Get into mixer control, CHG
 		unsigned poll_id = 0;
 
 		for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
 			if (_control_subs[i] >= 0) {
 				if (_poll_fds[poll_id].revents & POLLIN) {
-					orb_copy(_control_topics[i], _control_subs[i], &_controls[i]);
+					orb_copy(_control_topics[i], _control_subs[i], &_controls[i]);  /// Control input from rate controller received
 				}
 
 				poll_id++;
@@ -233,28 +233,28 @@ PWMSim::run()
 		}
 
 		/* can we mix? */
-		/* We also publish if not armed, this way we make sure SITL gets feedback. */
+		/* We also publish if not armed, this way we make sure SITL (software in the loop) gets feedback. */
 		if (_mixers != nullptr) {
-
-			/* do mixing */
+			/* do mixing */   /// CHG, mixing is here.  Output is _actuator_outputs.output[0] - _num_outputs
 			_actuator_outputs.noutputs = _mixers->mix(&_actuator_outputs.output[0], _num_outputs);
+			/// _actuator_outputs.noutputs is index
 
 			/* disable unused ports by setting their output to NaN */
 			const size_t actuator_outputs_size = sizeof(_actuator_outputs.output) / sizeof(_actuator_outputs.output[0]);
-
+            /// Guess this is 4 ???
 			for (size_t i = _actuator_outputs.noutputs; i < actuator_outputs_size; i++) {
 				_actuator_outputs.output[i] = NAN;
 			}
 
-			/* iterate actuators */
+			/* iterate actuators */   /// Set PWM values to motor according to Mixer?
 			for (unsigned i = 0; i < _actuator_outputs.noutputs; i++) {
 				/* last resort: catch NaN, INF and out-of-band errors */
 				const bool sane_mixer_output = PX4_ISFINITE(_actuator_outputs.output[i]) &&
 							       _actuator_outputs.output[i] >= -1.0f &&
 							       _actuator_outputs.output[i] <= 1.0f;
 
-				if (_armed && sane_mixer_output) {
-					/* scale for PWM output 1000 - 2000us */
+				if (_armed && sane_mixer_output) {  /// Valid
+					/* scale for PWM output 1000 - 2000us */ ///Scale
 					_actuator_outputs.output[i] = 1500 + (500 * _actuator_outputs.output[i]);
 					_actuator_outputs.output[i] = math::constrain(_actuator_outputs.output[i], (float)_pwm_min[i], (float)_pwm_max[i]);
 
@@ -357,7 +357,7 @@ PWMSim::control_callback(uintptr_t handle, uint8_t control_group, uint8_t contro
 }
 
 int
-PWMSim::ioctl(device::file_t *filp, int cmd, unsigned long arg)
+PWMSim::ioctl(device::file_t *filp, int cmd, unsigned long arg)  ///PWM IO control??
 {
 	int ret = OK;
 
@@ -517,12 +517,12 @@ PWMSim::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 
 		break;
 
-	case MIXERIOCLOADBUF: {
+	case MIXERIOCLOADBUF: {    /// CHG, Mix and output PWM???
 			const char *buf = (const char *)arg;
 			unsigned buflen = strnlen(buf, 1024);
 
 			if (_mixers == nullptr) {
-				_mixers = new MixerGroup(control_callback, (uintptr_t)&_controls);
+				_mixers = new MixerGroup(control_callback, (uintptr_t)&_controls);  /// Here feed controls from rate controller to mixer
 			}
 
 			if (_mixers == nullptr) {
@@ -539,7 +539,6 @@ PWMSim::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 					_mixers = nullptr;
 					_groups_required = 0;
 					ret = -EINVAL;
-
 				} else {
 					_mixers->groups_required(_groups_required);
 				}

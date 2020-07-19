@@ -160,7 +160,7 @@ MulticopterAttitudeControl::vehicle_status_poll()
 	/* check if there is new status information */
 	if (_vehicle_status_sub.update(&_vehicle_status)) {
 		/* set correct uORB ID, depending on if vehicle is VTOL or not */
-		if (_actuators_id == nullptr) {
+		if (_actuators_id == nullptr) {  /// is vtol, why vtol, this is mc_att_control!
 			if (_vehicle_status.is_vtol) {
 				_actuators_id = ORB_ID(actuator_controls_virtual_mc);
 				_attitude_sp_id = ORB_ID(mc_virtual_attitude_setpoint);
@@ -171,7 +171,7 @@ MulticopterAttitudeControl::vehicle_status_poll()
 					_is_tailsitter = (static_cast<vtol_type>(vt_type) == vtol_type::TAILSITTER);
 				}
 
-			} else {
+			} else {  /// is not vtol
 				_actuators_id = ORB_ID(actuator_controls_0);
 				_attitude_sp_id = ORB_ID(vehicle_attitude_setpoint);
 			}
@@ -423,6 +423,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 	/* apply low-pass filtering to the rates for D-term */
 	Vector3f rates_filtered(_lp_filters_d.apply(rates));
 
+	/// Modify here to utilize a model from rate to angular acc to M, RPY
 	_att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) +
 				     _rates_int -
 				     rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt) +
@@ -512,15 +513,18 @@ MulticopterAttitudeControl::publish_rate_controller_status()
 void
 MulticopterAttitudeControl::publish_actuator_controls()
 {
-	_actuators.control[0] = (PX4_ISFINITE(_att_control(0))) ? _att_control(0) : 0.0f;
-	_actuators.control[1] = (PX4_ISFINITE(_att_control(1))) ? _att_control(1) : 0.0f;
-	_actuators.control[2] = (PX4_ISFINITE(_att_control(2))) ? _att_control(2) : 0.0f;
-	_actuators.control[3] = (PX4_ISFINITE(_thrust_sp)) ? _thrust_sp : 0.0f;
+    /// CHG actuators' command published here. ORB ID: _actuators_id = "actuator_controls_0"
+    /// Test: how large is _actuators.control[0]?
+	_actuators.control[0] = (PX4_ISFINITE(_att_control(0))) ? _att_control(0) : 0.0f;  ///R
+	_actuators.control[1] = (PX4_ISFINITE(_att_control(1))) ? _att_control(1) : 0.0f; ///P
+	_actuators.control[2] = (PX4_ISFINITE(_att_control(2))) ? _att_control(2) : 0.0f;  ///Y
+	_actuators.control[3] = (PX4_ISFINITE(_thrust_sp)) ? _thrust_sp : 0.0f;   ///thrust
 	_actuators.control[7] = (float)_landing_gear.landing_gear;
 	// note: _actuators.timestamp_sample is set in MulticopterAttitudeControl::Run()
 	_actuators.timestamp = hrt_absolute_time();
 
 	/* scale effort by battery status */
+	/// Can we make it better?
 	if (_param_mc_bat_scale_en.get() && _battery_status.scale > 0.0f) {
 		for (int i = 0; i < 4; i++) {
 			_actuators.control[i] *= _battery_status.scale;
@@ -559,7 +563,7 @@ MulticopterAttitudeControl::Run()
 
 		/* run the rate controller immediately after a gyro update */
 		if (_v_control_mode.flag_control_rates_enabled) {
-			control_attitude_rates(dt, rates);
+			control_attitude_rates(dt, rates); /// attitude Rate controller
 
 			publish_actuator_controls();
 			publish_rate_controller_status();
@@ -596,8 +600,7 @@ MulticopterAttitudeControl::Run()
 
 		bool run_att_ctrl = _v_control_mode.flag_control_attitude_enabled && (is_hovering || is_tailsitter_transition);
 
-
-		if (run_att_ctrl) {
+		if (run_att_ctrl) {  /// Attitude control
 			if (attitude_updated) {
 				// Generate the attitude setpoint from stick inputs if we are in Manual/Stabilized mode
 				if (_v_control_mode.flag_control_manual_enabled &&
@@ -608,7 +611,7 @@ MulticopterAttitudeControl::Run()
 					attitude_setpoint_generated = true;
 				}
 
-				control_attitude();
+				control_attitude();  // Att controller runs here
 
 				if (_v_control_mode.flag_control_yawrate_override_enabled) {
 					/* Yaw rate override enabled, overwrite the yaw setpoint */

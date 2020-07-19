@@ -95,7 +95,7 @@ MultirotorMixer::MultirotorMixer(ControlCallback control_cb,
 	_thrust_factor(0.0f),
 	_airmode(Airmode::disabled),
 	_rotor_count(_config_rotor_count[(MultirotorGeometryUnderlyingType)geometry]),
-	_rotors(_config_index[(MultirotorGeometryUnderlyingType)geometry]),
+	_rotors(_config_index[(MultirotorGeometryUnderlyingType)geometry]),   ///CHG Value initialization of _rotors, which is from geometry (the number indicate the type: eg multirotor here. _config_index is predefined in mixer_multirotor_normalized.generated.h.)
 	_outputs_prev(new float[_rotor_count]),
 	_tmp_array(new float[_rotor_count])
 {
@@ -178,14 +178,14 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 
 	debug("adding multirotor mixer '%s'", geomname);
 
-	return new MultirotorMixer(
+	return new MultirotorMixer(  /// New class
 		       control_cb,
 		       cb_handle,
-		       geometry,
+		       geometry,  /// Corresponding to Rotors in mixer
 		       s[0] / 10000.0f,
 		       s[1] / 10000.0f,
 		       s[2] / 10000.0f,
-		       s[3] / 10000.0f);
+		       s[3] / 10000.0f);   /// CHG turn int to float. int is read from .mix file
 }
 
 float MultirotorMixer::compute_desaturation_gain(const float *desaturation_vector, const float *outputs,
@@ -255,6 +255,7 @@ void MultirotorMixer::mix_airmode_rp(float roll, float pitch, float yaw, float t
 
 	// Mix without yaw
 	for (unsigned i = 0; i < _rotor_count; i++) {
+	/// CHG How is this _rotors[i].roll_scale defined ??? It seems to be the key from fake m,f to PWM [-1,1] (in PWMsim turned to 1000-2000)
 		outputs[i] = roll * _rotors[i].roll_scale +
 			     pitch * _rotors[i].pitch_scale +
 			     thrust * _rotors[i].thrust_scale;

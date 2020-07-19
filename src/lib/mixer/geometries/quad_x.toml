@@ -7,8 +7,8 @@ description = "Generic Quadcopter in X configuration"
 [rotor_default]
 direction = "CW"
 axis      = [0.0, 0.0, -1.0]
-Ct        = 1.0
-Cm        = 0.05
+Ct        = 1.0   ### Lift force coefficient?
+Cm        = 0.05  ### Yaw torque coefficient?
 
 [[rotors]]
 name      = "front_right"
