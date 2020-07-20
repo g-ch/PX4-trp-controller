@@ -912,8 +912,10 @@ PX4IO::task_main()
 	/* lock against the ioctl handler */
 	lock();
 
+    PX4_INFO("IO test info, chg2223");
+
 	/* loop talking to IO */
-	while (!_task_should_exit) {
+	while (!_task_should_exit) {   /// Loop
 
 		/* adjust update interval */
 		if (_update_interval != 0) {
@@ -977,7 +979,7 @@ PX4IO::task_main()
 			}
 		}
 
-		if (!_armed && (now >= orb_check_last + ORB_CHECK_INTERVAL)) {
+		if (!_armed && (now >= orb_check_last + ORB_CHECK_INTERVAL)) {  /// not armed
 			/* run at 5Hz */
 			orb_check_last = now;
 
@@ -1269,7 +1271,7 @@ PX4IO::io_set_control_state(unsigned group)
 			orb_check(_t_actuator_controls_0, &changed);
 
 			if (changed) {
-				orb_copy(ORB_ID(actuator_controls_0), _t_actuator_controls_0, &controls);
+				orb_copy(ORB_ID(actuator_controls_0), _t_actuator_controls_0, &controls);  /// CHG copy actuator control here
 				perf_set_elapsed(_perf_sample_latency, hrt_elapsed_time(&controls.timestamp_sample));
 			}
 		}
@@ -1852,7 +1854,7 @@ PX4IO::io_publish_raw_rc()
 }
 
 int
-PX4IO::io_publish_pwm_outputs()
+PX4IO::io_publish_pwm_outputs()  ///CHH PWM out, given by ctl[i] from io_reg_get
 {
 	/* get servo values from IO */
 	uint16_t ctl[_max_actuators];
@@ -1920,7 +1922,7 @@ PX4IO::io_reg_set(uint8_t page, uint8_t offset, uint16_t value)
 }
 
 int
-PX4IO::io_reg_get(uint8_t page, uint8_t offset, uint16_t *values, unsigned num_values)
+PX4IO::io_reg_get(uint8_t page, uint8_t offset, uint16_t *values, unsigned num_values)  /// Read control values chg, looks like the output is given by registers
 {
 	/* range check the transfer */
 	if (num_values > ((_max_transfer) / sizeof(*values))) {

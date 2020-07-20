@@ -1142,6 +1142,9 @@ PX4FMU::cycle()
 							orb_copy(_control_topics[i], _control_subs[i], &_controls[i]);
 						}
 
+						//PX4_INFO("chg test");
+//						MAVLINK_DEBUG_INFO("chg test");
+
 						poll_id++;
 					}
 
@@ -1190,35 +1193,6 @@ PX4FMU::cycle()
 				float outputs[_MAX_ACTUATORS];
 				const unsigned mixed_num_outputs = _mixers->mix(outputs, _num_outputs);   ///Mixing, output is the control value for each motor
 
-				/// Overrided by CHG to test motor %%%%%%%%%%%%%%%
-//                outputs[0] = _controls[0].control[0];
-//                outputs[1] = _controls[0].control[1];
-//                outputs[2] = _controls[0].control[2];
-//                outputs[3] = _controls[0].control[3];
-//
-//                char out0_string[20];
-//                sprintf(out0_string, "outputs0: %f",(double)outputs[0]);
-//
-//                static int chg_test_counter = 0;
-//                chg_test_counter ++;
-//                if(chg_test_counter > 100){
-//                    MAVLINK_DEBUG_INFO(out0_string);
-//                    chg_test_counter = 0;
-//                }
-
-                float out_chg = _controls[0].control[3];
-                char out_string[20];
-                sprintf(out_string, "outputs3: %f",(double)out_chg);
-
-                static int chg_test_counter = 0;
-                chg_test_counter ++;
-                if(chg_test_counter > 100){
-                    MAVLINK_DEBUG_INFO(out_string);
-                    chg_test_counter = 0;
-                }
-
-                ///ENd of override
-
 				/* the PWM limit call takes care of out of band errors, NaN and constrains */
 				uint16_t pwm_limited[_MAX_ACTUATORS];
 
@@ -1258,6 +1232,13 @@ PX4FMU::cycle()
 				 */
 				if (n_updates > 0 && !_test_mode) {
 					up_pwm_update();
+
+                    static int chg_test_counter = 0;
+                    chg_test_counter ++;
+                    if(chg_test_counter > 100){
+                        MAVLINK_DEBUG_INFO("PWM sended! chg");
+                        chg_test_counter = 0;
+                    }
                 }
 
 				actuator_outputs_s actuator_outputs = {};

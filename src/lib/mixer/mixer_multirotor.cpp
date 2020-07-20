@@ -134,6 +134,7 @@ MultirotorMixer::~MultirotorMixer()
 MultirotorMixer *
 MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen)
 {
+	    /// control_cb is to get the desired control value!! CHG
 	MultirotorGeometry geometry = MultirotorGeometry::MAX_GEOMETRY;
 	char geomname[8];
 	int s[4];
@@ -179,7 +180,7 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	debug("adding multirotor mixer '%s'", geomname);
 
 	return new MultirotorMixer(  /// New class
-		       control_cb,
+		       control_cb, ///control_cb and cb_handle to receive desired control values in get_control function
 		       cb_handle,
 		       geometry,  /// Corresponding to Rotors in mixer
 		       s[0] / 10000.0f,
@@ -299,7 +300,7 @@ void MultirotorMixer::mix_airmode_rpy(float roll, float pitch, float yaw, float 
 void MultirotorMixer::mix_airmode_disabled(float roll, float pitch, float yaw, float thrust, float *outputs)
 {
 	// Airmode disabled: never allow to increase the thrust to unsaturate a motor
-
+    /// This is the mode we always use CHG
 	// Mix without yaw
 	for (unsigned i = 0; i < _rotor_count; i++) {
 		outputs[i] = roll * _rotors[i].roll_scale +
@@ -383,8 +384,9 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	// At this point the outputs are expected to be in [0, 1], but they can be outside, for example
 	// if a roll command exceeds the motor band limit.
 	for (unsigned i = 0; i < _rotor_count; i++) {
-		// Implement simple model for static relationship between applied motor pwm and motor thrust
-		// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2
+		/// Implement simple model for static relationship between applied motor pwm and motor thrust
+		/// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2  CHG
+		/// PWM = xxxx. Thrust factor was given in fmu.cpp
 		if (_thrust_factor > 0.0f) {
 			outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
 					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
@@ -416,7 +418,7 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 		}
 
 		// check for saturation against slew rate limits
-		if (_delta_out_max > 0.0f) {
+		if (_delta_out_max > 0.0f) {  ///CHG _delta_out_max indicate the maximum change on motor in one period
 			float delta_out = outputs[i] - _outputs_prev[i];
 
 			if (delta_out > _delta_out_max) {

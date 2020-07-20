@@ -4488,15 +4488,13 @@ public:
 
 	unsigned get_size()
 	{
-		return (_local_pos_time > 0) ? MAVLINK_MSG_ID_ALTITUDE_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+		return  MAVLINK_MSG_ID_ALTITUDE_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
 	}
 
 private:
-	MavlinkOrbSubscription *_local_pos_sub;
-	MavlinkOrbSubscription *_home_sub;
-	MavlinkOrbSubscription *_air_data_sub;
-
-	uint64_t _local_pos_time{0};
+    ////CHG modified
+    MavlinkOrbSubscription *_act_sub;
+    uint64_t _act_time;
 
 	/* do not allow top copying this class */
 	MavlinkStreamAltitude(MavlinkStreamAltitude &) = delete;
@@ -4504,80 +4502,28 @@ private:
 
 protected:
 	explicit MavlinkStreamAltitude(Mavlink *mavlink) : MavlinkStream(mavlink),
-		_local_pos_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_local_position))),
-		_home_sub(_mavlink->add_orb_subscription(ORB_ID(home_position))),
-		_air_data_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_air_data)))
+	    _act_sub(_mavlink->add_orb_subscription(ORB_ID(actuator_outputs))),
+        _act_time(0)
 	{}
 
 	bool send(const hrt_abstime t)
 	{
-		mavlink_altitude_t msg = {};
+        actuator_outputs_s act;
+        if (_act_sub->update(&_act_time, &act)) {
+            mavlink_altitude_t msg = {};
 
-		msg.altitude_monotonic = NAN;
-		msg.altitude_amsl = NAN;
-		msg.altitude_local = NAN;
-		msg.altitude_relative = NAN;
-		msg.altitude_terrain = NAN;
-		msg.bottom_clearance = NAN;
+            msg.altitude_monotonic = (float)act.output[0];  /// Control 0
+            msg.altitude_amsl = (float)act.output[1];
+            msg.altitude_local = (float)act.output[2];
+            msg.altitude_relative = (float)act.output[3];
+            msg.altitude_terrain = NAN;
+            msg.bottom_clearance = NAN;
 
-		// always update monotonic altitude
-		bool air_data_updated = false;
-		vehicle_air_data_s air_data = {};
-		_air_data_sub->update(&air_data);
+            msg.time_usec = hrt_absolute_time();
+            mavlink_msg_altitude_send_struct(_mavlink->get_channel(), &msg);
+        }
 
-		if (air_data.timestamp > 0) {
-			msg.altitude_monotonic = air_data.baro_alt_meter;
-
-			air_data_updated = true;
-		}
-
-		bool lpos_updated = false;
-
-		vehicle_local_position_s local_pos;
-
-		if (_local_pos_sub->update(&_local_pos_time, &local_pos)) {
-
-			if (local_pos.z_valid) {
-				if (local_pos.z_global) {
-					msg.altitude_amsl = -local_pos.z + local_pos.ref_alt;
-
-				} else {
-					msg.altitude_amsl = msg.altitude_monotonic;
-				}
-
-				msg.altitude_local = -local_pos.z;
-
-				home_position_s home = {};
-				_home_sub->update(&home);
-
-				if (home.valid_alt) {
-					msg.altitude_relative = -(local_pos.z - home.z);
-
-				} else {
-					msg.altitude_relative = -local_pos.z;
-				}
-
-				if (local_pos.dist_bottom_valid) {
-					msg.altitude_terrain = -local_pos.z - local_pos.dist_bottom;
-					msg.bottom_clearance = local_pos.dist_bottom;
-				}
-			}
-
-			lpos_updated = true;
-		}
-
-		// local position timeout after 10 ms
-		// avoid publishing only baro altitude_monotonic if possible
-		bool lpos_timeout = (hrt_elapsed_time(&_local_pos_time) > 10000);
-
-		if (lpos_updated || (air_data_updated && lpos_timeout)) {
-			msg.time_usec = hrt_absolute_time();
-			mavlink_msg_altitude_send_struct(_mavlink->get_channel(), &msg);
-
-			return true;
-		}
-
-		return false;
+		return true;
 	}
 };
 

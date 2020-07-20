@@ -262,14 +262,14 @@ PWMSim::run()
 					/* Disarmed or insane value - set disarmed pwm value
 					 * This will be clearly visible on the servo status and will limit the risk of accidentally
 					 * spinning motors. It would be deadly in flight. */
-					_actuator_outputs.output[i] = PWM_SIM_DISARMED_MAGIC;
+					_actuator_outputs.output[i] = PWM_SIM_DISARMED_MAGIC;  ///900
 				}
 			}
 
 			/* overwrite outputs in case of force_failsafe */
 			if (_failsafe) {
 				for (size_t i = 0; i < _actuator_outputs.noutputs; i++) {
-					_actuator_outputs.output[i] = PWM_SIM_FAILSAFE_MAGIC;
+					_actuator_outputs.output[i] = PWM_SIM_FAILSAFE_MAGIC;  /// 600
 				}
 			}
 
@@ -517,7 +517,7 @@ PWMSim::ioctl(device::file_t *filp, int cmd, unsigned long arg)  ///PWM IO contr
 
 		break;
 
-	case MIXERIOCLOADBUF: {    /// CHG, Mix and output PWM???
+	case MIXERIOCLOADBUF: {    /// CHG, Mix and output PWM intialize
 			const char *buf = (const char *)arg;
 			unsigned buflen = strnlen(buf, 1024);
 
