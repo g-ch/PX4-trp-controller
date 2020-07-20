@@ -56,6 +56,10 @@
 #include <rc/sbus.h>
 
 #include <uORB/topics/actuator_controls.h>
+#include <systemlib/mavlink_log.h>  //chg
+
+orb_advert_t  _mavlink_fmu_test_debug_msg_print{nullptr};  //chg
+#define MAVLINK_DEBUG_INFO( _text, ...)	mavlink_vasprintf(_MSG_PRIO_INFO, &_mavlink_fmu_test_debug_msg_print, _text, ##__VA_ARGS__)
 
 #include "mixer.h"
 
@@ -106,7 +110,7 @@ int mixer_mix_threadsafe(float *outputs, volatile uint16_t *limits)
 	}
 
 	in_mixer = true;
-	int mixcount = mixer_group.mix(&outputs[0], PX4IO_SERVO_COUNT);
+	int mixcount = mixer_group.mix(&outputs[0], PX4IO_SERVO_COUNT);   ///chg would this be the expected one??
 	*limits = mixer_group.get_saturation_status();
 	in_mixer = false;
 
@@ -118,6 +122,8 @@ mixer_tick(void)
 {
 	/* check if the mixer got modified */
 	mixer_handle_text_create_mixer();
+
+//    PX4_INFO("LALALAla");
 
 	/* check that we are receiving fresh data from the FMU */
 	irqstate_t irq_flags = enter_critical_section();
@@ -308,7 +314,19 @@ mixer_tick(void)
 		}
 
 		/* mix */
-		mixed = mixer_mix_threadsafe(&outputs[0], &r_mixer_limits);
+		mixed = mixer_mix_threadsafe(&outputs[0], &r_mixer_limits);  ///mix! chg. Get outputs here
+
+        /// TEST code from CHG. TEst works!!!
+//		static int test_counter = -100;
+//        outputs[0] = 0.01 * test_counter;
+//        outputs[1] = 0.01 * test_counter;
+//        outputs[2] = 0.01 * test_counter;
+//        outputs[3] = 0.01 * test_counter;
+//        test_counter ++;
+//        if(test_counter > 100){
+//            test_counter = -100;
+//        }
+        /// END of TEST code from CHG
 
 		/* the pwm limit call takes care of out of band errors */
 		pwm_limit_calc(should_arm, should_arm_nothrottle, mixed, r_setup_pwm_reverse, r_page_servo_disarmed,
@@ -333,7 +351,7 @@ mixer_tick(void)
 			 * the oneshots with updated values.
 			 */
 
-			up_pwm_update();
+			up_pwm_update();  ///update PWM here
 		}
 	}
 
@@ -398,7 +416,7 @@ mixer_tick(void)
 }
 
 static int
-mixer_callback(uintptr_t handle,
+mixer_callback(uintptr_t handle,   /// chg callback for mixer, get a actuator_control(control_group, control_index) as a float from registers
 	       uint8_t control_group,
 	       uint8_t control_index,
 	       float &control)
@@ -410,7 +428,7 @@ mixer_callback(uintptr_t handle,
 	}
 
 	switch (source) {
-	case MIX_FMU:
+	case MIX_FMU:   /// REG to float??? values from drivers/px4io.cpp???
 		if (control_index < PX4IO_CONTROL_CHANNELS && control_group < PX4IO_CONTROL_GROUPS) {
 			control = REG_TO_FLOAT(r_page_controls[CONTROL_PAGE_INDEX(control_group, control_index)]);
 			break;

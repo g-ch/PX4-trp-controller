@@ -33,7 +33,7 @@
 
 /**
  * @file px4io.c
- * Top-level logic for the PX4IO module.
+ * Top-level logic for the PX4IO module.  CHG seems to be what we are looking for??
  *
  * @author Lorenz Meier <lorenz@px4.io>
  */
@@ -386,9 +386,11 @@ user_start(int argc, char *argv[])
 	uint64_t last_heartbeat_time = 0;
 	uint64_t last_loop_time = 0;
 
-	for (;;) {
+	for (;;) {   /// The main loop???? CHG
 		dt = (hrt_absolute_time() - last_loop_time) / 1000000.0f;
 		last_loop_time = hrt_absolute_time();
+
+//		PX4_INFO("Is this the main loop?");
 
 		if (dt < 0.0001f) {
 			dt = 0.0001f;
@@ -402,7 +404,7 @@ user_start(int argc, char *argv[])
 
 		/* kick the mixer */
 		perf_begin(mixer_perf);
-		mixer_tick();
+		mixer_tick();  /// This is the function to call mixer, chg
 		perf_end(mixer_perf);
 
 		/* kick the control inputs */
