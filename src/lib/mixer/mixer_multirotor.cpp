@@ -97,7 +97,10 @@ MultirotorMixer::MultirotorMixer(ControlCallback control_cb,
 	_rotor_count(_config_rotor_count[(MultirotorGeometryUnderlyingType)geometry]),
 	_rotors(_config_index[(MultirotorGeometryUnderlyingType)geometry]),   ///CHG Value initialization of _rotors, which is from geometry (the number indicate the type: eg multirotor here. _config_index is predefined in mixer_multirotor_normalized.generated.h.)
 	_outputs_prev(new float[_rotor_count]),
-	_tmp_array(new float[_rotor_count])
+	_tmp_array(new float[_rotor_count]),
+	_rotors_base_cc(0.21),
+    _motor_max_thrust_cc(14),
+    _motor_torque_to_thrust_coff_cc(0.015)
 {
 	for (unsigned i = 0; i < _rotor_count; ++i) {
 		_outputs_prev[i] = _idle_speed;
@@ -118,7 +121,10 @@ MultirotorMixer::MultirotorMixer(ControlCallback control_cb,
 	_rotor_count(rotor_count),
 	_rotors(rotors),
 	_outputs_prev(new float[_rotor_count]),
-	_tmp_array(new float[_rotor_count])
+	_tmp_array(new float[_rotor_count]),
+    _rotors_base_cc(0.21),
+    _motor_max_thrust_cc(14),
+    _motor_torque_to_thrust_coff_cc(0.015)
 {
 	for (unsigned i = 0; i < _rotor_count; ++i) {
 		_outputs_prev[i] = _idle_speed;
@@ -539,6 +545,15 @@ MultirotorMixer::set_airmode(Airmode airmode)
 {
 	_airmode = airmode;
 }
+
+void
+MultirotorMixer::set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff) //chg
+{
+    _rotors_base_cc = rotor_base_meters;
+    _motor_max_thrust_cc = max_motor_drag_n;
+    _motor_torque_to_thrust_coff_cc = torque_to_thrust_coeff;
+}
+
 
 void
 MultirotorMixer::groups_required(uint32_t &groups)

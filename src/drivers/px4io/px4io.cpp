@@ -1204,6 +1204,44 @@ PX4IO::task_main()
                     param_get(parm_handle, &param_val_int);
                     (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_AIRMODE, SIGNED_TO_REG(param_val_int));
                 }
+
+                /** Parameters given by chg. Write to registers */
+                float ori_value = 0;
+                float value_now =0;
+                parm_handle = param_find("MC_ROTOR_BASE_CC");
+                if (parm_handle != PARAM_INVALID) {
+                    param_get(parm_handle, &param_val);
+                    float converted_value = param_val / 1000.f; //to meters
+                    (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_ROTOR_BASE, FLOAT_TO_REG(converted_value));
+
+                    ori_value = converted_value;
+                    value_now = REG_TO_FLOAT(FLOAT_TO_REG(converted_value));
+                    PX4_INFO("base ori_value=%f, value_now=%f", (double)ori_value, (double)value_now);
+                }
+
+                parm_handle = param_find("MC_M_DRAG_MAX_CC");
+                if (parm_handle != PARAM_INVALID) {
+                    param_get(parm_handle, &param_val);
+                    float converted_value = param_val / 1000.f;  //to kN
+                    (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_MAX_MOTOR_DRAG, FLOAT_TO_REG(converted_value));
+
+                    ori_value = converted_value;
+                    value_now = REG_TO_FLOAT(FLOAT_TO_REG(converted_value)) * 1000.f;  //restore to N
+                    PX4_INFO("drag ori_value=%f, value_now=%f", (double)ori_value, (double)value_now);
+                }
+
+                parm_handle = param_find("MC_M_TD_PARAM_CC");
+                if (parm_handle != PARAM_INVALID) {
+                    param_get(parm_handle, &param_val);
+                    (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_TORQUE_TO_THRUST_COEFF, FLOAT_TO_REG(param_val));
+
+                    ori_value = param_val;
+                    value_now = REG_TO_FLOAT(FLOAT_TO_REG(param_val));
+                    PX4_INFO("TORQUE_TO_THRUST ori_value=%f, value_now=%f", (double)ori_value, (double)value_now);
+                }
+
+                /** end*/
+
             }
 
         }
@@ -1314,7 +1352,7 @@ PX4IO::io_set_control_state(unsigned group)
 
     if (!_test_fmu_fail) {
         /* copy values to registers in IO */
-        if(group==0){PX4_INFO("regs[0] = %d", regs[0]);}  ///chg
+//        if(group==0){PX4_INFO("regs[0] = %d", regs[0]);}  ///chg
 
         return io_reg_set(PX4IO_PAGE_CONTROLS, group * PX4IO_PROTOCOL_MAX_CONTROL_COUNT, regs, _max_controls);
 

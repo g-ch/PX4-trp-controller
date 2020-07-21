@@ -133,8 +133,8 @@ MulticopterAttitudeControl::parameters_updated()   /// only execute when disarme
     _torque_coeff = _param_mc_rotor_torque_to_drag_cc.get();
     _inertia_head_zz = _param_mc_head_jzz_cc.get()/1000000.f; // kg*mm^2 to kg*m^2
 //
-    char out_string[20];
-    sprintf(out_string, "matrix_yy: %f",(double)temp_matrix[1][1]);
+    char out_string[30];
+    sprintf(out_string, "_rotor_base: %f meter",(double)_rotor_base);
     MAVLINK_DEBUG_INFO(out_string);
 	/**end***/
 

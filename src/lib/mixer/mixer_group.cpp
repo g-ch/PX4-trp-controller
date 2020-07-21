@@ -198,6 +198,18 @@ MixerGroup::set_airmode(Airmode airmode)
 	}
 }
 
+void
+MixerGroup::set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff)
+{
+    Mixer	*mixer = _first;
+
+    while (mixer != nullptr) {
+        mixer->set_parameters_defined_by_cc(rotor_base_meters, max_motor_drag_n, torque_to_thrust_coeff);
+        mixer = mixer->_next;
+    }
+}
+
+
 unsigned
 MixerGroup::get_multirotor_count()
 {

@@ -242,6 +242,11 @@ enum {							/* DSM bind states */
 
 #define PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION	28	/**< flight termination; false if the circuit breaker (CBRK_FLIGHTTERM) is set */
 
+#define PX4IO_P_SETUP_MAX_MOTOR_DRAG 29  /**chg*/
+#define PX4IO_P_SETUP_ROTOR_BASE 30  /**chg*/
+#define PX4IO_P_SETUP_TORQUE_TO_THRUST_COEFF 31  /**chg*/
+
+
 #define PX4IO_THERMAL_IGNORE			UINT16_MAX
 #define PX4IO_THERMAL_OFF			0
 #define PX4IO_THERMAL_FULL			10000

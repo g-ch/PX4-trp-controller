@@ -135,6 +135,10 @@ extern uint16_t			r_page_servo_disarmed[];	/* PX4IO_PAGE_DISARMED_PWM */
 #define r_setup_airmode		r_page_setup[PX4IO_P_SETUP_AIRMODE]
 #define r_setup_flighttermination	r_page_setup[PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION]
 
+#define r_setup_motor_drag    	        r_page_setup[PX4IO_P_SETUP_MAX_MOTOR_DRAG]  //chg
+#define r_setup_rotor_base    	            r_page_setup[PX4IO_P_SETUP_ROTOR_BASE]  //chg
+#define r_setup_torque_to_thrust_coeff    	r_page_setup[PX4IO_P_SETUP_TORQUE_TO_THRUST_COEFF]  //chg
+
 #define r_control_values	(&r_page_controls[0])
 
 /*

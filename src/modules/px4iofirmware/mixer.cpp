@@ -269,6 +269,16 @@ mixer_tick(void)
 	mixer_group.set_airmode((Mixer::Airmode)REG_TO_SIGNED(r_setup_airmode));
 
 
+	/**
+	 * Update parameters defined by chg.
+	 * This operation read variables from registers written in real time in /driver/px4io/px4io.cpp
+	 * and then set to mixers. Parameters in multirotor_mixer should be updated by this.
+	 * **/
+    mixer_group.set_parameters_defined_by_cc(REG_TO_FLOAT(r_setup_rotor_base),  //m
+                                             REG_TO_FLOAT(r_setup_motor_drag) * 1000.f,  //kN to N
+                                             REG_TO_FLOAT(r_setup_torque_to_thrust_coeff));
+    /**end*/
+
 	/*
 	 * Run the mixers.
 	 */

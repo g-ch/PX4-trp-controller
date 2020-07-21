@@ -254,6 +254,9 @@ public:
 	 */
 	virtual void set_airmode(Airmode airmode) {};
 
+    ///by chg
+	virtual void set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff) {};
+
 	virtual unsigned get_multirotor_count()  {return 0;}
 
 protected:
@@ -451,6 +454,8 @@ public:
 	void	set_thrust_factor(float val) override;
 
 	void 	set_airmode(Airmode airmode) override;
+
+	void    set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff) override;  //chg
 
 	unsigned get_multirotor_count() override;
 
@@ -719,6 +724,10 @@ public:
 
 	void 			set_airmode(Airmode airmode) override;
 
+    ///chg
+    void            set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff) override;
+
+
 	unsigned get_multirotor_count() override {return _rotor_count;}
 
 	union saturation_status {
@@ -828,6 +837,12 @@ private:
 
 	float 				*_outputs_prev = nullptr;
 	float 				*_tmp_array = nullptr;
+
+	/*** CHG added ***/
+    float _rotors_base_cc;
+    float _motor_max_thrust_cc;
+    float _motor_torque_to_thrust_coff_cc;
+	/*** End ***/
 
 	/* do not allow to copy due to ptr data members */
 	MultirotorMixer(const MultirotorMixer &);
