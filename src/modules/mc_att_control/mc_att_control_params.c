@@ -711,3 +711,86 @@ PARAM_DEFINE_FLOAT(MC_DTERM_CUTOFF, 0.f);
  */
 PARAM_DEFINE_INT32(MC_AIRMODE, 0);
 
+/**
+ * Multicopter Motor Base from chg
+ *
+ * Set the motor base of the multicopter. Unit: meter.
+ *
+ * @min 0.01
+ * @max 10000.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_ROTOR_BASE_CC, 210);
+
+/**
+ * Multicopter inertia xx from chg
+ *
+ * Set Multicopter inertia xx. Uint: kg*mm^2
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_J_XX_CC, 10000.0);
+
+/**
+ * Multicopter inertia yy from chg
+ *
+ * Set Multicopter inertia yy. Uint: kg*mm^2
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_J_YY_CC, 10000.0);
+
+/**
+ * Multicopter inertia zz from chg
+ *
+ * Set Multicopter inertia zz. Uint: kg*mm^2
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_J_ZZ_CC, 20000.0);
+
+/**
+ * Multicopter head inertia zz. Only for rolling head. from chg
+ *
+ * Set Multicopter head inertia zz. Uint: kg*mm^2
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_J_HEAD_ZZ_CC, 0.0);
+
+/**
+ * Multicopter Weight from chg
+ *
+ * Set the weight of the multicopter. Unit: kg.
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_WEIGHT_CC, 1.0);
+
+/**
+ * Maximum drag force of a motor. from chg
+ *
+ * Set the maximum drag force of a motor. Unit: N.
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_M_DRAG_MAX_CC, 14);
+
+/**
+ * Torque to drag force coefficient. from chg
+ *
+ * Torque approx drag force (N) * this coefficient (m).
+ *
+ * @min 0.0
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_M_TD_PARAM_CC, 0.015);
+
+
+

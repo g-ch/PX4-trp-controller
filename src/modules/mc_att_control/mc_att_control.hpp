@@ -271,7 +271,16 @@ private:
 		_param_mpc_thr_hover,			/**< throttle at which vehicle is at hover equilibrium */
 		(ParamInt<px4::params::MPC_THR_CURVE>) _param_mpc_thr_curve,				/**< throttle curve behavior */
 
-		(ParamInt<px4::params::MC_AIRMODE>) _param_mc_airmode
+		(ParamInt<px4::params::MC_AIRMODE>) _param_mc_airmode,
+
+        (ParamFloat<px4::params::MC_ROTOR_BASE_CC>) _param_mc_rotor_base_cc,
+        (ParamFloat<px4::params::MC_J_XX_CC>) _param_mc_jxx_cc,
+        (ParamFloat<px4::params::MC_J_YY_CC>) _param_mc_jyy_cc,
+        (ParamFloat<px4::params::MC_J_ZZ_CC>) _param_mc_jzz_cc,
+        (ParamFloat<px4::params::MC_J_HEAD_ZZ_CC>) _param_mc_head_jzz_cc,
+        (ParamFloat<px4::params::MC_WEIGHT_CC>) _param_mc_weight_cc,
+        (ParamFloat<px4::params::MC_M_DRAG_MAX_CC>) _param_mc_rotor_maximum_drag_cc,
+        (ParamFloat<px4::params::MC_M_TD_PARAM_CC>) _param_mc_rotor_torque_to_drag_cc
 	)
 
     bool _is_tailsitter{false};
@@ -288,6 +297,17 @@ private:
 
 	matrix::Vector3f _acro_rate_max;	/**< max attitude rates in acro mode */
 	float _man_tilt_max;			/**< maximum tilt allowed for manual flight [rad] */
+
+
+	/// Below are from chg
+	matrix::Matrix3f _body_inertia_matrix;  ///inertia
+    float _rotor_base{0.0f};
+    float _weight{0.0f};
+    float _max_drag_force{0.0};
+    float _torque_coeff{0.0};
+    float _inertia_head_zz;
+
+    orb_advert_t  _mavlink_attcontrol_test_debug_msg_print{nullptr};  //chg
 
 };
 

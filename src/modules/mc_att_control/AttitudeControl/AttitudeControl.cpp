@@ -86,7 +86,7 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 	qd = qd_red * Quatf(cosf(_yaw_w * acosf(q_mix(0))), 0, 0, sinf(_yaw_w * asinf(q_mix(3))));
 
 	// quaternion attitude control law, qe is rotation from q to qd
-	const Quatf qe = q.inversed() * qd;
+	const Quatf qe = q.inversed() * qd;  ///This is useful!!
 
 	// using sin(alpha/2) scaled rotation axis as attitude error (see quaternion definition by axis angle)
 	// also taking care of the antipodal unit quaternion ambiguity
@@ -94,6 +94,7 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 
 
 	// 计算积分误差
+	///In QGC. No I and D parameter for attitude control can be found. Guess these are all zero. CHG
     ieq += eq;
 	ieq(0) = math::constrain(ieq(0),-_att_int_lim(0),_att_int_lim(0));
 	ieq(1) = math::constrain(ieq(1),-_att_int_lim(1),_att_int_lim(1));
@@ -108,7 +109,7 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, floa
 	deq(0) = _att_d(0)*deq(0);
 	deq(1) = _att_d(1)*deq(1);
 
-    // calculate angular rates setpoint
+    // calculate angular rates setpoint with PID.
 	matrix::Vector3f rate_setpoint = eq.emult(_proportional_gain)+ieq+deq;
 
 	// Feed forward the yaw setpoint rate.

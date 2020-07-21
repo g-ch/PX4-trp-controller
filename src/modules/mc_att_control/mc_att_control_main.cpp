@@ -51,6 +51,7 @@
 #include <circuit_breaker/circuit_breaker.h>
 #include <mathlib/math/Limits.hpp>
 #include <mathlib/math/Functions.hpp>
+#include <systemlib/mavlink_log.h>  //chg
 
 #define TPA_RATE_LOWER_LIMIT 0.05f
 
@@ -58,6 +59,8 @@
 #define AXIS_INDEX_PITCH 1
 #define AXIS_INDEX_YAW 2
 #define AXIS_COUNT 3
+
+#define MAVLINK_DEBUG_INFO( _text, ...)	mavlink_vasprintf(_MSG_PRIO_INFO, &_mavlink_attcontrol_test_debug_msg_print, _text, ##__VA_ARGS__)
 
 using namespace matrix;
 
@@ -99,7 +102,7 @@ MulticopterAttitudeControl::init()
 }
 
 void
-MulticopterAttitudeControl::parameters_updated()
+MulticopterAttitudeControl::parameters_updated()   /// only execute when disarmed
 {
 	// Store some of the parameters in a more convenient way & precompute often-used values
 	_attitude_control.setProportionalGain(Vector3f(_param_mc_roll_p.get(), _param_mc_pitch_p.get(), _param_mc_yaw_p.get()));
@@ -118,6 +121,22 @@ MulticopterAttitudeControl::parameters_updated()
 	_rate_int_lim = Vector3f(_param_mc_rr_int_lim.get(), _param_mc_pr_int_lim.get(), _param_mc_yr_int_lim.get());
 	_rate_d = Vector3f(_param_mc_rollrate_d.get(), _param_mc_pitchrate_d.get(), _param_mc_yawrate_d.get());
 	_rate_ff = Vector3f(_param_mc_rollrate_ff.get(), _param_mc_pitchrate_ff.get(), _param_mc_yawrate_ff.get());
+
+	/***Added by chg. Update parameters and change to standard unit**/
+	float temp_matrix[3][3] = {_param_mc_jxx_cc.get()/1000000.f, 0.f, 0.f,
+                            0.f, _param_mc_jyy_cc.get()/1000000.f, 0.f,
+                            0.f, 0.f, _param_mc_jzz_cc.get()/1000000.f};  // kg*mm^2 to kg*m^2
+    _body_inertia_matrix = Matrix3f(temp_matrix);
+    _rotor_base = _param_mc_rotor_base_cc.get() / 1000.f;  //to meters
+    _weight = _param_mc_weight_cc.get(); //kg
+    _max_drag_force = _param_mc_rotor_maximum_drag_cc.get(); //N
+    _torque_coeff = _param_mc_rotor_torque_to_drag_cc.get();
+    _inertia_head_zz = _param_mc_head_jzz_cc.get()/1000000.f; // kg*mm^2 to kg*m^2
+//
+    char out_string[20];
+    sprintf(out_string, "matrix_yy: %f",(double)temp_matrix[1][1]);
+    MAVLINK_DEBUG_INFO(out_string);
+	/**end***/
 
 	// The controller gain K is used to convert the parallel (P + I/s + sD) form
 	// to the ideal (K * [1 + 1/sTi + sTd]) form
@@ -413,6 +432,8 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 		_rates_int.zero();
 	}
 
+	/// Why do we need a Throttle PID Attenuation breakpoint???
+    /// In our case.pid_attenuations always gives value 1 because TPA is 1. CHG
 	Vector3f rates_p_scaled = _rate_p.emult(pid_attenuations(_param_mc_tpa_break_p.get(), _param_mc_tpa_rate_p.get()));
 	Vector3f rates_i_scaled = _rate_i.emult(pid_attenuations(_param_mc_tpa_break_i.get(), _param_mc_tpa_rate_i.get()));
 	Vector3f rates_d_scaled = _rate_d.emult(pid_attenuations(_param_mc_tpa_break_d.get(), _param_mc_tpa_rate_d.get()));
@@ -424,14 +445,13 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 	Vector3f rates_filtered(_lp_filters_d.apply(rates));
 
 	/// Modify here to utilize a model from rate to angular acc to M, RPY
-	_att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) +
-				     _rates_int -
-				     rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt) +
-		       _rate_ff.emult(_rates_sp);
+	_att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt)
+	              + _rate_ff.emult(_rates_sp);
 
 	_rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
 
+	/// The followings are for integer
 	/* update integral only if we are not landed */
 	if (!_vehicle_land_detected.maybe_landed && !_vehicle_land_detected.landed) {
 		for (int i = AXIS_INDEX_ROLL; i < AXIS_COUNT; i++) {
@@ -514,7 +534,7 @@ void
 MulticopterAttitudeControl::publish_actuator_controls()
 {
     /// CHG actuators' command published here. ORB ID: _actuators_id = "actuator_controls_0"
-    /// Test: how large is _actuators.control[0]?
+    /// Test: how large is _actuators.control[0]? It is constrained to [-1,1] in px4io.cpp or px4fmu.cpp
 	_actuators.control[0] = (PX4_ISFINITE(_att_control(0))) ? _att_control(0) : 0.0f;  ///R
 	_actuators.control[1] = (PX4_ISFINITE(_att_control(1))) ? _att_control(1) : 0.0f; ///P
 	_actuators.control[2] = (PX4_ISFINITE(_att_control(2))) ? _att_control(2) : 0.0f;  ///Y
@@ -565,7 +585,7 @@ MulticopterAttitudeControl::Run()
 		if (_v_control_mode.flag_control_rates_enabled) {
 			control_attitude_rates(dt, rates); /// attitude Rate controller
 
-			publish_actuator_controls();
+			publish_actuator_controls();   ///publish
 			publish_rate_controller_status();
 		}
 
