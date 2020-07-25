@@ -56,9 +56,12 @@ void pwm_limit_init(pwm_limit_t *limit)
 	limit->time_armed = 0;
 }
 
+//void pwm_limit_calc(const bool armed, const bool pre_armed, const unsigned num_channels, const uint16_t reverse_mask,
+//		    const uint16_t *disarmed_pwm, const uint16_t *min_pwm, const uint16_t *max_pwm,
+//		    const float *output, uint16_t *effective_pwm, pwm_limit_t *limit)
 void pwm_limit_calc(const bool armed, const bool pre_armed, const unsigned num_channels, const uint16_t reverse_mask,
-		    const uint16_t *disarmed_pwm, const uint16_t *min_pwm, const uint16_t *max_pwm,
-		    const float *output, uint16_t *effective_pwm, pwm_limit_t *limit)
+                    const uint16_t *disarmed_pwm, const uint16_t *min_pwm, const uint16_t *max_pwm,
+                    const float *output, uint16_t *effective_pwm, pwm_limit_t *limit)
 {
 
 	/* first evaluate state changes */

@@ -198,7 +198,7 @@ MixerGroup::set_airmode(Airmode airmode)
 	}
 }
 
-void
+void   ///chg
 MixerGroup::set_parameters_defined_by_cc(float rotor_base_meters, float max_motor_drag_n, float torque_to_thrust_coeff)
 {
     Mixer	*mixer = _first;

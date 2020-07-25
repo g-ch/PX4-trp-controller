@@ -840,9 +840,17 @@ private:
 
 	/*** CHG added ***/
     float _rotors_base_cc;
-    float _motor_max_thrust_cc;
+    float _motor_max_drag_cc;
     float _motor_torque_to_thrust_coff_cc;
-	/*** End ***/
+
+    float _rotors_base_half_cc;
+    float _rotors_base_half_reciprocal_cc;
+    float _motor_max_drag_reciprocal_cc;
+    float _max_pitch_roll_torque_cc;
+    float _max_yaw_torque_cc;
+    float _max_thrust_cc;
+    float _motor_torque_to_thrust_coff_reciprocal_cc;
+    /*** End ***/
 
 	/* do not allow to copy due to ptr data members */
 	MultirotorMixer(const MultirotorMixer &);

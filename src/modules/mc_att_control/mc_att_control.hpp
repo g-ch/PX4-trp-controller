@@ -301,11 +301,22 @@ private:
 
 	/// Below are from chg
 	matrix::Matrix3f _body_inertia_matrix;  ///inertia
-    float _rotor_base{0.0f};
-    float _weight{0.0f};
-    float _max_drag_force{0.0};
+    float _rotor_base{0.0f}; // kg*N^2
+    float _weight{0.0f}; // kg
+    float _max_motor_drag_force{0.0}; //N
     float _torque_coeff{0.0};
-    float _inertia_head_zz;
+    float _inertia_head_zz{0.0f}; //kg*N^2
+
+    float _rotor_base_half{0.0f};  // _rotor_base/2.f
+    float _rotor_base_half_reciprocal{0.0f};  // 1.f/_rotor_base_half
+    float _max_pitch_roll_torque{0.0f};
+    float _max_yaw_torque{0.0f};
+    float _max_thrust{0.0f};
+    float _max_thrust_reciprocal{0.0f};
+    float _torque_to_drag_coeff_reciprocal{0.0f};
+    float _max_motor_drag_force_reciprocal{0.0f};
+    float _max_pitch_roll_torque_reciprocal{0.0f};
+    float _max_yaw_torque_reciprocal{0.0f};
 
     orb_advert_t  _mavlink_attcontrol_test_debug_msg_print{nullptr};  //chg
 

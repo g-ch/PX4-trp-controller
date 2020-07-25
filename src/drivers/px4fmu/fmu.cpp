@@ -1246,7 +1246,6 @@ PX4FMU::cycle()
                 reorder_outputs(pwm_limited);  ///for special frame in beta version
 
                 /* output to the servos */  ///Send PWM commands!! CHG
-
                 if (_pwm_initialized && !_test_mode) {
                     for (size_t i = 0; i < mixed_num_outputs; i++) {
                         up_pwm_servo_set(i, pwm_limited[i]);

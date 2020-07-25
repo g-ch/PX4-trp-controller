@@ -129,12 +129,24 @@ MulticopterAttitudeControl::parameters_updated()   /// only execute when disarme
     _body_inertia_matrix = Matrix3f(temp_matrix);
     _rotor_base = _param_mc_rotor_base_cc.get() / 1000.f;  //to meters
     _weight = _param_mc_weight_cc.get(); //kg
-    _max_drag_force = _param_mc_rotor_maximum_drag_cc.get(); //N
+    _max_motor_drag_force = _param_mc_rotor_maximum_drag_cc.get(); //N
     _torque_coeff = _param_mc_rotor_torque_to_drag_cc.get();
     _inertia_head_zz = _param_mc_head_jzz_cc.get()/1000000.f; // kg*mm^2 to kg*m^2
-//
+
+    _rotor_base_half = _rotor_base / 2.f;
+    _rotor_base_half_reciprocal = 1.f / _rotor_base_half;
+    _max_motor_drag_force_reciprocal = 1.f / _max_motor_drag_force;
+    _torque_to_drag_coeff_reciprocal = 1.f / _torque_coeff;
+    _max_pitch_roll_torque = 0.707f * _rotor_base_half * _max_motor_drag_force;
+    _max_pitch_roll_torque_reciprocal = 1.f / _max_pitch_roll_torque;
+    _max_yaw_torque = _max_motor_drag_force * _torque_coeff * 2.f;
+    _max_yaw_torque_reciprocal = 1.f / _max_yaw_torque;
+    _max_thrust = _max_motor_drag_force * 4.f;
+    _max_thrust_reciprocal = 1.f / _max_thrust;
+
+    /// To display
     char out_string[30];
-    sprintf(out_string, "_rotor_base: %f meter",(double)_rotor_base);
+    sprintf(out_string, "_max_yaw_torque: %f Nm",(double)_max_yaw_torque);
     MAVLINK_DEBUG_INFO(out_string);
 	/**end***/
 
@@ -444,11 +456,33 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 	/* apply low-pass filtering to the rates for D-term */
 	Vector3f rates_filtered(_lp_filters_d.apply(rates));
 
-	/// Modify here to utilize a model from rate to angular acc to M, RPY
-	_att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt)
-	              + _rate_ff.emult(_rates_sp);
+//	/**  Modified by chg **/
+    Vector3f rates_to_torque_pid_result = rates_p_scaled.emult(rates_err) + _rates_int -
+            rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt;
 
-	_rates_prev = rates;
+    Vector3f gyro_torque = rates_filtered.cross(_body_inertia_matrix*rates_filtered);
+    _att_control = _rate_k.emult(gyro_torque) + _rate_ff.emult(_rates_sp)
+            + rates_to_torque_pid_result;
+
+//    char out_string[30];
+//    sprintf(out_string, "yaw_torque: %f Nm",(double)rates_to_torque_pid_result(2));
+//    MAVLINK_DEBUG_INFO(out_string);
+
+    _att_control(0) = _att_control(0) * _max_pitch_roll_torque_reciprocal;
+    _att_control(1) = _att_control(1) * _max_pitch_roll_torque_reciprocal;
+    _att_control(2) = _att_control(2) * _max_yaw_torque_reciprocal;
+
+    _att_control(0) = math::constrain(_att_control(0), -1.f, 1.f);
+    _att_control(1) = math::constrain(_att_control(1), -1.f, 1.f);
+    _att_control(2) = math::constrain(_att_control(2), -1.f, 1.f);
+    /**  End **/
+
+//    _att_control = _rate_k.emult(rates_p_scaled.emult(rates_err) +
+//                                 _rates_int -
+//                                 rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt) +
+//                   _rate_ff.emult(_rates_sp);
+
+    _rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
 
 	/// The followings are for integer

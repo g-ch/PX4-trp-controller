@@ -110,7 +110,7 @@ int mixer_mix_threadsafe(float *outputs, volatile uint16_t *limits)
 	}
 
 	in_mixer = true;
-	int mixcount = mixer_group.mix(&outputs[0], PX4IO_SERVO_COUNT);   ///chg would this be the expected one??
+	int mixcount = mixer_group.mix(&outputs[0], PX4IO_SERVO_COUNT);   ///chg would this be the expected one?? YES
 	*limits = mixer_group.get_saturation_status();
 	in_mixer = false;
 
@@ -326,21 +326,32 @@ mixer_tick(void)
 		/* mix */
 		mixed = mixer_mix_threadsafe(&outputs[0], &r_mixer_limits);  ///mix! chg. Get outputs here
 
-        /// TEST code from CHG. TEst works!!!
-//		static int test_counter = -100;
-//        outputs[0] = 0.01 * test_counter;
-//        outputs[1] = 0.01 * test_counter;
-//        outputs[2] = 0.01 * test_counter;
-//        outputs[3] = 0.01 * test_counter;
-//        test_counter ++;
-//        if(test_counter > 100){
-//            test_counter = -100;
-//        }
-        /// END of TEST code from CHG
-
 		/* the pwm limit call takes care of out of band errors */
 		pwm_limit_calc(should_arm, should_arm_nothrottle, mixed, r_setup_pwm_reverse, r_page_servo_disarmed,
 			       r_page_servo_control_min, r_page_servo_control_max, outputs, r_page_servos, &pwm_limit);
+
+//        const uint16_t servo_disarmed_pwm_cc[8] = {900, 900, 900, 900, 900, 900, 900, 900};
+//        const uint16_t r_page_servo_control_min_cc[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+//        const uint16_t r_page_servo_control_max_cc[8] = {2000,2000,2000,2000,2000,2000,2000,2000};
+
+//        pwm_limit_calc(should_arm, should_arm_nothrottle, mixed, r_setup_pwm_reverse, servo_disarmed_pwm_cc,
+//                       r_page_servo_control_min_cc, r_page_servo_control_max_cc, outputs, r_page_servos, &pwm_limit);
+
+//        for(unsigned i=0; i <4; i++){
+//            if(outputs[i] < -0.99f){
+//                r_page_servos[i] = 900;
+//            }else{
+//                r_page_servos[i] = 1500 + 600 * outputs[i];
+//            }
+//        }
+
+//		///chg
+//        r_page_servos[0] = 1050;
+//        r_page_servos[1] = 900;
+//        r_page_servos[2] = 1100;
+//        r_page_servos[3] = 1500;
+//		////
+
 
 		/* clamp unused outputs to zero */
 		for (unsigned i = mixed; i < PX4IO_SERVO_COUNT; i++) {
@@ -352,7 +363,6 @@ mixer_tick(void)
 		for (unsigned i = 0; i < PX4IO_SERVO_COUNT; i++) {
 			r_page_actuators[i] = FLOAT_TO_REG(outputs[i]);
 		}
-
 
 		if (mixed  && new_fmu_data) {
 			new_fmu_data = false;

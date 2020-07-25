@@ -1206,8 +1206,8 @@ PX4IO::task_main()
                 }
 
                 /** Parameters given by chg. Write to registers */
-                float ori_value = 0;
-                float value_now =0;
+                float ori_value = 0.f;
+                float value_now = 0.f;
                 parm_handle = param_find("MC_ROTOR_BASE_CC");
                 if (parm_handle != PARAM_INVALID) {
                     param_get(parm_handle, &param_val);
