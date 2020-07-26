@@ -245,6 +245,10 @@ private:
     Mixer::Airmode _airmode;	///< multicopter air-mode
     MotorOrdering _motor_ordering;
 
+    float _rotor_base_meters_cc;  //chg
+    float _max_motor_drag_n_cc;  //chg
+    float _torque_to_drag_coeff_cc; //chg
+
     perf_counter_t	_perf_control_latency;
 
     static bool	arm_nothrottle()
@@ -326,6 +330,9 @@ PX4FMU::PX4FMU(bool run_as_task) :
         _thr_mdl_fac(0.0f),
         _airmode(Mixer::Airmode::disabled),
         _motor_ordering(MotorOrdering::PX4),
+        _rotor_base_meters_cc(0.21f),
+        _max_motor_drag_n_cc(12.f),
+        _torque_to_drag_coeff_cc(0.015f),
         _perf_control_latency(perf_alloc(PC_ELAPSED, "fmu control latency"))
 {
     for (unsigned i = 0; i < _MAX_ACTUATORS; i++) {
@@ -1185,6 +1192,7 @@ PX4FMU::cycle()
 
                 _mixers->set_thrust_factor(_thr_mdl_fac);   ///Settings for mixer. Set thrust factor for motor model.
                 _mixers->set_airmode(_airmode);  /// Settings for mixer. Set air mode to choose a mixer mode.
+                _mixers->set_parameters_defined_by_cc(_rotor_base_meters_cc, _max_motor_drag_n_cc, _torque_to_drag_coeff_cc); ///CHG
 
                 /* do mixing */  ///Mixing!!!
                 float outputs[_MAX_ACTUATORS];
@@ -1429,6 +1437,25 @@ void PX4FMU::update_params()
     if (param_handle != PARAM_INVALID) {
         param_get(param_handle, (int32_t *)&_motor_ordering);
     }
+
+    /// CHG added
+    param_handle = param_find("MC_ROTOR_BASE_CC");
+    if (param_handle != PARAM_INVALID) {
+        param_get(param_handle, &_rotor_base_meters_cc);
+        _rotor_base_meters_cc = _rotor_base_meters_cc * 0.001f; //mm to meter
+    }
+
+    param_handle = param_find("MC_M_DRAG_MAX_CC");
+    if (param_handle != PARAM_INVALID) {
+        param_get(param_handle, &_max_motor_drag_n_cc);
+    }
+
+    param_handle = param_find("MC_M_TD_PARAM_CC");
+    if (param_handle != PARAM_INVALID) {
+        param_get(param_handle, &_torque_to_drag_coeff_cc);
+    }
+
+
 }
 
 

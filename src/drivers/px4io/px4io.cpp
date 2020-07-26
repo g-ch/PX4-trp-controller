@@ -1206,12 +1206,12 @@ PX4IO::task_main()
                 }
 
                 /** Parameters given by chg. Write to registers */
-                float ori_value = 0.f;
-                float value_now = 0.f;
+                float ori_value = 0.f;  // variables for debugging
+                float value_now = 0.f;  // variables for debugging
                 parm_handle = param_find("MC_ROTOR_BASE_CC");
                 if (parm_handle != PARAM_INVALID) {
                     param_get(parm_handle, &param_val);
-                    float converted_value = param_val / 1000.f; //to meters
+                    float converted_value = param_val * 0.001f; //to meters
                     (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_ROTOR_BASE, FLOAT_TO_REG(converted_value));
 
                     ori_value = converted_value;
@@ -1222,7 +1222,7 @@ PX4IO::task_main()
                 parm_handle = param_find("MC_M_DRAG_MAX_CC");
                 if (parm_handle != PARAM_INVALID) {
                     param_get(parm_handle, &param_val);
-                    float converted_value = param_val / 1000.f;  //to kN
+                    float converted_value = param_val * 0.001f;  //to kN
                     (void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_MAX_MOTOR_DRAG, FLOAT_TO_REG(converted_value));
 
                     ori_value = converted_value;

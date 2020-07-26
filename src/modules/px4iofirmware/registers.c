@@ -715,6 +715,9 @@ registers_set_one(uint8_t page, uint8_t offset, uint16_t value)
 		case PX4IO_P_SETUP_SCALE_YAW:
 		case PX4IO_P_SETUP_MOTOR_SLEW_MAX:
 		case PX4IO_P_SETUP_AIRMODE:
+		case PX4IO_P_SETUP_MAX_MOTOR_DRAG:  //chg
+		case PX4IO_P_SETUP_ROTOR_BASE:   //chg
+		case PX4IO_P_SETUP_TORQUE_TO_THRUST_COEFF:   //chg
 		case PX4IO_P_SETUP_THERMAL:
 		case PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION:
 			r_page_setup[offset] = value;

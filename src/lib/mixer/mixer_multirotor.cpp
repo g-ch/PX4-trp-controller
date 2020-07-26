@@ -255,129 +255,29 @@ void MultirotorMixer::minimize_saturation(const float *desaturation_vector, floa
 	}
 }
 
-void MultirotorMixer::mix_airmode_rp(float roll, float pitch, float yaw, float thrust, float *outputs)
-{
-    // Airmode for roll and pitch, but not yaw
-	// Mix without yaw
-	for (unsigned i = 0; i < _rotor_count; i++) {
-		outputs[i] = roll * _rotors[i].roll_scale +
-			     pitch * _rotors[i].pitch_scale +
-			     thrust * _rotors[i].thrust_scale;
-
-//		 Thrust will be used to unsaturate if needed
-		_tmp_array[i] = _rotors[i].thrust_scale;
-	}
-
-	minimize_saturation(_tmp_array, outputs, _saturation_status);
-
-	// Mix yaw independently
-	mix_yaw(yaw, outputs);
-
-
-
-	/** Just add some calculations **/
-    float roll_torque_sp_real = roll * _max_pitch_roll_torque_cc;
-    float pitch_torque_sp_real = pitch * _max_pitch_roll_torque_cc;
-    float yaw_torque_sp_real = yaw * _max_yaw_torque_cc;
-    float thrust_sp_real = thrust * _max_thrust_cc;
-
-    float _a = thrust_sp_real * 0.5f;
-    float _b = roll_torque_sp_real * 0.707f * _rotors_base_half_reciprocal_cc;
-    float _d = pitch_torque_sp_real * 0.707f * _rotors_base_half_reciprocal_cc;
-
-    /// Calculate motor drag considering pitch, roll and thrust control.
-    float f1=0.f, f2=0.f, f3=0.f, f4=0.f;
-    for(unsigned step=0; step<=4; step++){  // Calculate f4
-        float cond_min[4], cond_max[4];
-        cond_min[0] = _a - _b - _motor_max_drag_cc;
-        cond_max[0] = _a - _b;
-        cond_min[1] = _a - _d - _motor_max_drag_cc;
-        cond_max[1] = _a - _d;
-        cond_min[2] = -_b - _d;
-        cond_max[2] = -_b - _d + _motor_max_drag_cc;
-        cond_min[3] = 0;
-        cond_max[3] = _motor_max_drag_cc;
-
-        float f4_min = -1000.f;
-        float f4_max = 1000.f;
-        for(unsigned i=0; i<4; i++){
-            if(cond_min[i] > f4_min){  //find max among cond_min[i]
-                f4_min = cond_min[i];
-            }
-            if(cond_max[i] < f4_max){  //find min among cond_max[i]
-                f4_max = cond_max[i];
-            }
-        }
-
-        if(f4_min <= f4_max){
-            f4 = (f4_min + f4_max) * 0.5f;
-            break;
-        }else{
-            /// Desaturation
-            if(cond_min[0] > f4_max || cond_min[1] > f4_max){
-                _a = _a * 0.95f;
-                _saturation_status.flags.motor_pos = true;
-            }else if(cond_max[0] < f4_min || cond_max[1] < f4_min){
-                _a = _a * 1.05f;
-                _saturation_status.flags.motor_neg = true;
-            }else{
-                // Should never be here
-                f4 = (f4_min + f4_max) / 2.f;
-                break;
-            }
-        }
-    }
-
-    f1 = _a - _b - f4;
-    f2 = _a - _d - f4;
-    f3 = _b + _d + f4;
-
-    // Now consider yaw control
-    float delt_fi = yaw_torque_sp_real * 0.25f * _motor_torque_to_thrust_coff_reciprocal_cc;
-    float delt_fi_max = 1000.f;
-    if(delt_fi >= 0){
-        _motor_max_drag_cc-f1 < delt_fi_max ? delt_fi_max= _motor_max_drag_cc-f1 : true;
-        _motor_max_drag_cc-f2 < delt_fi_max ? delt_fi_max= _motor_max_drag_cc-f2 : true;
-        f3 < delt_fi_max ? delt_fi_max= f3 : true;
-        f4 < delt_fi_max ? delt_fi_max= f4 : true;
-    }else{
-        f1 < delt_fi_max ? delt_fi_max=f1 : true;
-        f2 < delt_fi_max ? delt_fi_max=f2 : true;
-        _motor_max_drag_cc-f3 < delt_fi_max ? delt_fi_max= _motor_max_drag_cc-f3 : true;
-        _motor_max_drag_cc-f4 < delt_fi_max ? delt_fi_max= _motor_max_drag_cc-f4 : true;
-    }
-
-    if(delt_fi > delt_fi_max) {
-        delt_fi = delt_fi_max;
-        _saturation_status.flags.motor_pos = true;
-    }else if(delt_fi < -delt_fi_max){
-        delt_fi = -delt_fi_max;
-        _saturation_status.flags.motor_neg = true;
-    }else{;}
-
-    f1 += delt_fi;
-    f2 += delt_fi;
-    f3 -= delt_fi;
-    f4 -= delt_fi;
-
-}
+//void MultirotorMixer::mix_airmode_rp(float roll, float pitch, float yaw, float thrust, float *outputs)
+//{
+//    // Airmode for roll and pitch, but not yaw
+//	// Mix without yaw
+//	for (unsigned i = 0; i < _rotor_count; i++) {
+//		outputs[i] = roll * _rotors[i].roll_scale +
+//			     pitch * _rotors[i].pitch_scale +
+//			     thrust * _rotors[i].thrust_scale;
+//
+////		 Thrust will be used to unsaturate if needed
+//		_tmp_array[i] = _rotors[i].thrust_scale;
+//	}
+//
+//	minimize_saturation(_tmp_array, outputs, _saturation_status);
+//
+//	// Mix yaw independently
+//	mix_yaw(yaw, outputs);
+//
+//}
 
 void MultirotorMixer::mix_airmode_rpy(float roll, float pitch, float yaw, float thrust, float *outputs)
 {
-	// Airmode for roll, pitch and yaw
-    _rotors_base_cc = 0.21f;
-    _motor_max_drag_cc = 12.f;
-    _motor_torque_to_thrust_coff_cc = 0.015f;
-
-    _rotors_base_half_cc = _rotors_base_cc * 0.5f;
-    _rotors_base_half_reciprocal_cc = 1.f / _rotors_base_half_cc;
-    _motor_max_drag_reciprocal_cc = 1.f / _motor_max_drag_cc;
-    _max_pitch_roll_torque_cc = 0.707f * _rotors_base_half_cc * _motor_max_drag_cc;
-    _max_yaw_torque_cc = _motor_max_drag_cc * _motor_torque_to_thrust_coff_cc * 2.f;
-    _max_thrust_cc = 4.f * _motor_max_drag_cc;
-    _motor_torque_to_thrust_coff_reciprocal_cc = 1.f / _motor_torque_to_thrust_coff_cc;
-
-    roll = roll * _max_pitch_roll_torque_cc;
+    roll = roll * _max_pitch_roll_torque_cc;  /// Modified by chg
     pitch =  pitch * _max_pitch_roll_torque_cc;
     yaw = yaw * _max_yaw_torque_cc;
 
@@ -403,61 +303,48 @@ void MultirotorMixer::mix_airmode_rpy(float roll, float pitch, float yaw, float 
 	minimize_saturation(_tmp_array, outputs, _saturation_status);
 }
 
-//void MultirotorMixer::mix_airmode_disabled(float roll, float pitch, float yaw, float thrust, float *outputs)
-//{
-//	// Airmode disabled: never allow to increase the thrust to unsaturate a motor
-//
-//	// Mix without yaw
-//	for (unsigned i = 0; i < _rotor_count; i++) {
-//		outputs[i] = roll * _rotors[i].roll_scale +
-//			     pitch * _rotors[i].pitch_scale +
-//			     thrust * _rotors[i].thrust_scale;
-//
-//		// Thrust will be used to unsaturate if needed
-//		_tmp_array[i] = _rotors[i].thrust_scale;
-//	}
-//
-//	// only reduce thrust
-//	minimize_saturation(_tmp_array, outputs, _saturation_status, 0.f, 1.f, true);
-//
-//	// Reduce roll/pitch acceleration if needed to unsaturate
-//	for (unsigned i = 0; i < _rotor_count; i++) {
-//		_tmp_array[i] = _rotors[i].roll_scale;
-//	}
-//
-//	minimize_saturation(_tmp_array, outputs, _saturation_status);
-//
-//	for (unsigned i = 0; i < _rotor_count; i++) {
-//		_tmp_array[i] = _rotors[i].pitch_scale;
-//	}
-//
-//	minimize_saturation(_tmp_array, outputs, _saturation_status);
-//
-//	// Mix yaw independently
-//	mix_yaw(yaw, outputs);
-//
-//    outputs[0] = 0.0f;
-//    outputs[1] = 0.0f;
-//    outputs[2] = 0.0f;
-//    outputs[3] = 0.1f;
-//}
+void MultirotorMixer::mix_airmode_disabled(float roll, float pitch, float yaw, float thrust, float *outputs)
+{
+	// Airmode disabled: never allow to increase the thrust to unsaturate a motor
+
+    roll = roll * _max_pitch_roll_torque_cc;  /// Modified by chg
+    pitch =  pitch * _max_pitch_roll_torque_cc;
+    yaw = yaw * _max_yaw_torque_cc;
+
+	// Mix without yaw
+	for (unsigned i = 0; i < _rotor_count; i++) {
+		outputs[i] = roll * _rotors[i].roll_scale +
+			     pitch * _rotors[i].pitch_scale +
+			     thrust * _rotors[i].thrust_scale;
+
+		// Thrust will be used to unsaturate if needed
+		_tmp_array[i] = _rotors[i].thrust_scale;
+	}
+
+	// only reduce thrust
+	minimize_saturation(_tmp_array, outputs, _saturation_status, 0.f, 1.f, true);
+
+	// Reduce roll/pitch acceleration if needed to unsaturate
+	for (unsigned i = 0; i < _rotor_count; i++) {
+		_tmp_array[i] = _rotors[i].roll_scale;
+	}
+
+	minimize_saturation(_tmp_array, outputs, _saturation_status);
+
+	for (unsigned i = 0; i < _rotor_count; i++) {
+		_tmp_array[i] = _rotors[i].pitch_scale;
+	}
+
+	minimize_saturation(_tmp_array, outputs, _saturation_status);
+
+	// Mix yaw independently
+	mix_yaw(yaw, outputs);
+}
 
 ///Modified by chg
-void MultirotorMixer::mix_airmode_disabled(float roll, float pitch, float yaw, float thrust, float *outputs) {
-    _rotors_base_cc = 0.21f;
-    _motor_max_drag_cc = 12.f;
-    _motor_torque_to_thrust_coff_cc = 0.015f;
-
-    _rotors_base_half_cc = _rotors_base_cc * 0.5f;
-    _rotors_base_half_reciprocal_cc = 1.f / _rotors_base_half_cc;
-    _motor_max_drag_reciprocal_cc = 1.f / _motor_max_drag_cc;
-    _max_pitch_roll_torque_cc = 0.707f * _rotors_base_half_cc * _motor_max_drag_cc;
-    _max_yaw_torque_cc = _motor_max_drag_cc * _motor_torque_to_thrust_coff_cc * 2.f;
-    _max_thrust_cc = 4.f * _motor_max_drag_cc;
-    _motor_torque_to_thrust_coff_reciprocal_cc = 1.f / _motor_torque_to_thrust_coff_cc;
-
+void MultirotorMixer::mix_airmode_rp(float roll, float pitch, float yaw, float thrust, float *outputs) {
     //// NOTE: Thrust could be NAN or Infinite when vehicle is not armed. IN this case just pass infinite to outputs so the motor won't rotate
-    if(!isfinite(thrust) || thrust < 0.0001f){
+    if(!isfinite(thrust) || thrust < 0.0001f){  ///When disarmed
         for (unsigned i = 0; i < _rotor_count; i++) {
             outputs[i] = roll * _rotors[i].roll_scale +
                          pitch * _rotors[i].pitch_scale +
