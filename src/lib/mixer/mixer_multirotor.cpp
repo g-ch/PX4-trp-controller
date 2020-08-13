@@ -356,91 +356,106 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 unsigned
 MultirotorMixer::mix(float *outputs, unsigned space)
 {
-	float roll    = math::constrain(get_control(0, 0) * _roll_scale, -1.0f, 1.0f);
-	float pitch   = math::constrain(get_control(0, 1) * _pitch_scale, -1.0f, 1.0f);
-	float yaw     = math::constrain(get_control(0, 2) * _yaw_scale, -1.0f, 1.0f);
-	float thrust  = math::constrain(get_control(0, 3), 0.0f, 1.0f);
+	float control_value[4];
+    control_value[0] = math::constrain(get_control(0, 0), -1.0f, 1.0f);
+	control_value[1] = math::constrain(get_control(0, 1), -1.0f, 1.0f);  ///chg
+	control_value[2] = math::constrain(get_control(0, 2), -1.0f, 1.0f);
+	control_value[3] = math::constrain(get_control(0, 3), -1.0f, 1.0f);
 
 	// clean out class variable used to capture saturation
 	_saturation_status.value = 0;
 
 	// Do the mixing using the strategy given by the current Airmode configuration
-	switch (_airmode) {
-	case Airmode::roll_pitch:
-		mix_airmode_rp(roll, pitch, yaw, thrust, outputs);
-		break;
+//	switch (_airmode) {
+//	case Airmode::roll_pitch:
+//		mix_airmode_rp(roll, pitch, yaw, thrust, outputs);
+//		break;
+//
+//	case Airmode::roll_pitch_yaw:
+//		mix_airmode_rpy(roll, pitch, yaw, thrust, outputs);
+//		break;
+//
+//	case Airmode::disabled:
+//	default: // just in case: default to disabled
+//		mix_airmode_disabled(roll, pitch, yaw, thrust, outputs);
+//		break;
+//	}
 
-	case Airmode::roll_pitch_yaw:
-		mix_airmode_rpy(roll, pitch, yaw, thrust, outputs);
-		break;
-
-	case Airmode::disabled:
-	default: // just in case: default to disabled
-		mix_airmode_disabled(roll, pitch, yaw, thrust, outputs);
-		break;
-	}
+    /// USE no mixer. just remap, chg
+    if(!isfinite(control_value[3])){
+        for(int i=0; i<4; i++){  /// pass infinite value so that motor won't start when disarmed
+            outputs[i] = control_value[3];
+        }
+    }else{
+        for(int i=0; i<4; i++){
+            outputs[i] = (control_value[i] + 1.0f) / 2.0f;
+            outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
+        }
+    }
 
 	// Apply thrust model and scale outputs to range [idle_speed, 1].
 	// At this point the outputs are expected to be in [0, 1], but they can be outside, for example
 	// if a roll command exceeds the motor band limit.
-	for (unsigned i = 0; i < _rotor_count; i++) {
+//	for (unsigned i = 0; i < _rotor_count; i++) {
 		/// Implement simple model for static relationship between applied motor pwm and motor thrust
 		/// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2  CHG
 		/// PWM = xxxx. Thrust factor was given in fmu.cpp
-		if (_thrust_factor > 0.0f) {
-			outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
-					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
-							_thrust_factor));
-		}
 
-		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
-	}
+		/// Remove this remap to get real change of motor
+//		if (_thrust_factor > 0.0f) {
+//			outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
+//					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
+//							_thrust_factor));
+//		}
+
+//		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
+//	}
 
 	// Slew rate limiting and saturation checking
-	for (unsigned i = 0; i < _rotor_count; i++) {
-		bool clipping_high = false;
-		bool clipping_low_roll_pitch = false;
-		bool clipping_low_yaw = false;
-
-		// Check for saturation against static limits.
-		// We only check for low clipping if airmode is disabled (or yaw
-		// clipping if airmode==roll/pitch), since in all other cases thrust will
-		// be reduced or boosted and we can keep the integrators enabled, which
-		// leads to better tracking performance.
-		if (outputs[i] < _idle_speed + 0.01f) {
-			if (_airmode == Airmode::disabled) {
-				clipping_low_roll_pitch = true;
-				clipping_low_yaw = true;
-
-			} else if (_airmode == Airmode::roll_pitch) {
-				clipping_low_yaw = true;
-			}
-		}
-
-		// check for saturation against slew rate limits
-		if (_delta_out_max > 0.0f) {  ///CHG _delta_out_max indicate the maximum change on motor in one period
-			float delta_out = outputs[i] - _outputs_prev[i];
-
-			if (delta_out > _delta_out_max) {
-				outputs[i] = _outputs_prev[i] + _delta_out_max;
-				clipping_high = true;
-
-			} else if (delta_out < -_delta_out_max) {
-				outputs[i] = _outputs_prev[i] - _delta_out_max;
-				clipping_low_roll_pitch = true;
-				clipping_low_yaw = true;
-
-			}
-		}
-
-		_outputs_prev[i] = outputs[i];
-
-		// update the saturation status report
-		update_saturation_status(i, clipping_high, clipping_low_roll_pitch, clipping_low_yaw);
-	}
-
-	// this will force the caller of the mixer to always supply new slew rate values, otherwise no slew rate limiting will happen
-	_delta_out_max = 0.0f;
+//	for (unsigned i = 0; i < _rotor_count; i++) {
+//		bool clipping_high = false;
+//		bool clipping_low_roll_pitch = false;
+//		bool clipping_low_yaw = false;
+//
+//		// Check for saturation against static limits.
+//		// We only check for low clipping if airmode is disabled (or yaw
+//		// clipping if airmode==roll/pitch), since in all other cases thrust will
+//		// be reduced or boosted and we can keep the integrators enabled, which
+//		// leads to better tracking performance.
+//		if (outputs[i] < _idle_speed + 0.01f) {
+//			if (_airmode == Airmode::disabled) {
+//				clipping_low_roll_pitch = true;
+//				clipping_low_yaw = true;
+//
+//			} else if (_airmode == Airmode::roll_pitch) {
+//				clipping_low_yaw = true;
+//			}
+//		}
+//
+//		// check for saturation against slew rate limits
+//		if (_delta_out_max > 0.0f) {  ///CHG _delta_out_max indicate the maximum change on motor in one period
+//			float delta_out = outputs[i] - _outputs_prev[i];
+//
+//			if (delta_out > _delta_out_max) {
+//				outputs[i] = _outputs_prev[i] + _delta_out_max;
+//				clipping_high = true;
+//
+//			} else if (delta_out < -_delta_out_max) {
+//				outputs[i] = _outputs_prev[i] - _delta_out_max;
+//				clipping_low_roll_pitch = true;
+//				clipping_low_yaw = true;
+//
+//			}
+//		}
+//
+//		_outputs_prev[i] = outputs[i];
+//
+//		// update the saturation status report
+//		update_saturation_status(i, clipping_high, clipping_low_roll_pitch, clipping_low_yaw);
+//	}
+//
+//	// this will force the caller of the mixer to always supply new slew rate values, otherwise no slew rate limiting will happen
+//	_delta_out_max = 0.0f;
 
 	return _rotor_count;
 }

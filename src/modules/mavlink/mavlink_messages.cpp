@@ -4512,7 +4512,7 @@ protected:
         if (_act_sub->update(&_act_time, &act)) {
             mavlink_altitude_t msg = {};
 
-            msg.altitude_monotonic = (float)act.output[0];  /// Control 0
+            msg.altitude_monotonic = (float)act.output[0];  /// Control 0, chg changed
             msg.altitude_amsl = (float)act.output[1];
             msg.altitude_local = (float)act.output[2];
             msg.altitude_relative = (float)act.output[3];
