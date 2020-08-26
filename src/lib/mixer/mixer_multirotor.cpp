@@ -504,14 +504,16 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 		// Implement simple model for static relationship between applied motor pwm and motor thrust
 		// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2
 		if (_thrust_factor > 0.0f) {
-			outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
-					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
-							_thrust_factor));
+            outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
+                        (1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ?
+                        0.0f : outputs[i] /_thrust_factor));
 		}
+		/// In Airmode::roll_pitch, we consider the relationship between this output (directly corresponding to PWM)
+		/// and the motor force as a linear function, which has been proved to be good with T-motor ESC.
 
-		//// turn [0,1] to [-1,1]
-		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
-	}
+        //normally, _idle_speed = -1.f; Thus this turns the range from [0,1] to [-1,1]
+        outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
+    }
 
 	// Slew rate limiting and saturation checking
 	for (unsigned i = 0; i < _rotor_count; i++) {

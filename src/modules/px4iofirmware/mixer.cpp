@@ -325,6 +325,7 @@ mixer_tick(void)
 
 		/* mix */
 		mixed = mixer_mix_threadsafe(&outputs[0], &r_mixer_limits);  ///mix! chg. Get outputs here
+        /// Outputs should be in the range of [-1, 1]
 
 		/* the pwm limit call takes care of out of band errors */
 		pwm_limit_calc(should_arm, should_arm_nothrottle, mixed, r_setup_pwm_reverse, r_page_servo_disarmed,

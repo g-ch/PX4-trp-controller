@@ -470,7 +470,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt, const Vector3f &rat
 
     _att_control(0) = _att_control(0) * _max_pitch_roll_torque_reciprocal;
     _att_control(1) = _att_control(1) * _max_pitch_roll_torque_reciprocal;
-    _att_control(2) = _att_control(2) * _max_yaw_torque_reciprocal;
+    _att_control(2) = _att_control(2) * _max_yaw_torque_reciprocal;  /// chg. ADD yaw compensation here.
 
     _att_control(0) = math::constrain(_att_control(0), -1.f, 1.f);
     _att_control(1) = math::constrain(_att_control(1), -1.f, 1.f);

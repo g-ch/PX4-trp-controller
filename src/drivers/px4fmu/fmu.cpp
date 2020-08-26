@@ -1421,11 +1421,11 @@ void PX4FMU::update_params()
     param_handle = param_find("THR_MDL_FAC");
 
     if (param_handle != PARAM_INVALID) {
-        param_get(param_handle, &_thr_mdl_fac);   /// A parameter given by QGC?
+        param_get(param_handle, &_thr_mdl_fac);   /// A parameter given by QGC? YES
     }
 
     // multicopter air-mode
-    param_handle = param_find("MC_AIRMODE");  /// A parameter given by QGC?
+    param_handle = param_find("MC_AIRMODE");  /// A parameter given by QGC? YES
 
     if (param_handle != PARAM_INVALID) {
         param_get(param_handle, &_airmode);
