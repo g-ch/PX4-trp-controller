@@ -24,6 +24,8 @@
 # xbee_att_control start
 # mesh_xbee_att_control start
 # offb_ctrl start
+
+niming start
 #---------------------------------------
 
 #ll40ls start i2c
