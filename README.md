@@ -1,3 +1,20 @@
+This is a package of the TRP-Controller developed based on the PX4 Firmware.
+
+# Additional Instructions
+__Note__ This modified firmware can only be used for "X" type quadrotor.
+
+Change the following parameters to use the TRP-Controller.
+__Parameters__:
+1. MC_AIRMODE should be Roll/Picth. If MC_AIRMODE is disable, the original PX4 mixer will be used.
+2. MC_ROTOR_BASE_CC: rotor base length. Unit: mm
+3. MC_J_XX_CC: Body inertia Jxx. Unit: kg*mm^2
+4. MC_J_YY_CC: Body inertia Jyy. Unit: kg*mm^2
+5. MC_J_ZZ_CC: Body inertia Jzz. Unit: kg*mm^2
+6. MC_M_DRAG_MAX_CC: Maximum thrust of one rotor. Unit: N.
+7. MC_M_TD_PARAM_CC: Yaw torque coefficient. Yaw torque = MC_M_TD_PARAM_CC * thrust  Unit: None
+8. MC_WEIGHT_CC: weight of the quadrotor. Unit: kg.
+
+
 # PX4 Drone Autopilot
 
 [![Releases](https://img.shields.io/github/release/PX4/Firmware.svg)](https://github.com/PX4/Firmware/releases) [![DOI](https://zenodo.org/badge/22634/PX4/Firmware.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/Firmware)

@@ -44,7 +44,7 @@
 using namespace matrix;
 namespace ControlMath
 {
-vehicle_attitude_setpoint_s thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp)
+vehicle_attitude_setpoint_s thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp)  //chg. acc to rpy
 {
 	vehicle_attitude_setpoint_s att_sp = {};
 	att_sp.yaw_body = yaw_sp;
